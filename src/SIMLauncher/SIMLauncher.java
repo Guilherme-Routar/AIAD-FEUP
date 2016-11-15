@@ -1,13 +1,10 @@
 package SIMLauncher;
 import java.awt.Color;
 import java.util.ArrayList;
-
-import Agents.SensorAgent;
+import Agents.Sensor;
 import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.wrapper.StaleProxyException;
-
-import sajas.core.Agent;
 import sajas.core.Runtime;
 import sajas.sim.repast3.Repast3Launcher;
 import sajas.wrapper.ContainerController;
@@ -24,14 +21,15 @@ public class SIMLauncher extends Repast3Launcher {
 
 	//Parameters
 	private ContainerController mainContainer;
-	private ArrayList<SensorAgent> sensorsList;
+	private ArrayList<Sensor> sensors;
 	//Simulation elements
-	private Object2DGrid grid;
+	private Object2DGrid environment;
 	private DisplaySurface surface;
 	private OpenSequenceGraph plot;
 	//Values
 	private int NUM_SENSORS = 10;
-	private int GRID_SIZE = 100;
+	private int ENV_WIDTH = 10;
+	private int ENV_HEIGHT = 10;
 	private static boolean BATCH_MODE = false;
 	//-----
 
@@ -48,18 +46,26 @@ public class SIMLauncher extends Repast3Launcher {
 		this.NUM_SENSORS = NUM_SENSORS;
 	}
 	
-	public int getGRID_SIZE() {
-		return GRID_SIZE;
+	public int getENV_WIDTH() {
+		return ENV_WIDTH;
 	}
 	
-	public void setGRID_SIZE(int GRID_SIZE) {
-		this.GRID_SIZE = GRID_SIZE;
+	public void setENV_WIDTH(int ENV_WIDTH) {
+		this.ENV_WIDTH = ENV_WIDTH;
+	}
+	
+	public int getENV_HEIGHT() {
+		return ENV_HEIGHT;
+	}
+	
+	public void setENV_HEIGHT(int ENV_HEIGHT) {
+		this.ENV_HEIGHT = ENV_HEIGHT;
 	}
 	//-----
 	
 	@Override
 	public String[] getInitParam() {
-		return new String[] {"NUM_SENSORS", "GRID_SIZE"};
+		return new String[] {"NUM_SENSORS", "ENV_WIDTH", "ENV_HEIGHT"};
 	}
 	
 	@Override
@@ -98,21 +104,21 @@ public class SIMLauncher extends Repast3Launcher {
 		}
 	}
 
-	SensorAgent createSensor() {
+	Sensor createSensor() {
 
 		int x, y;
 		do {
-			x = Random.uniform.nextIntFromTo(0, grid.getSizeX() - 1);
-			y = Random.uniform.nextIntFromTo(0, grid.getSizeY() - 1);
-		} while (grid.getObjectAt(x, y) != null);
+			x = Random.uniform.nextIntFromTo(0, environment.getSizeX() - 1);
+			y = Random.uniform.nextIntFromTo(0, environment.getSizeY() - 1);
+		} while (environment.getObjectAt(x, y) != null);
 
 		Color color = new Color(Random.uniform.nextIntFromTo(0, 255), 
 				Random.uniform.nextIntFromTo(0, 255), 
 				Random.uniform.nextIntFromTo(0, 255));
 
-		SensorAgent sensor = new SensorAgent(x, y, grid, color);
-		grid.putObjectAt(x, y, sensor);
-		sensorsList.add(sensor);
+		Sensor sensor = new Sensor(x, y, environment, color);
+		environment.putObjectAt(x, y, sensor);
+		sensors.add(sensor);
 
 		return sensor;
 	}
@@ -128,16 +134,16 @@ public class SIMLauncher extends Repast3Launcher {
 
 	//Create and store agents; Create space, data recorders
 	private void buildModel() {
-		sensorsList = new ArrayList<SensorAgent>();
-		grid = new Object2DGrid(GRID_SIZE, GRID_SIZE);
+		sensors = new ArrayList<Sensor>();
+		environment = new Object2DGrid(ENV_WIDTH, ENV_HEIGHT);
 	}
 
 	//Create displays, charts
 	private void buildDisplay() {
 
 		//Grid 
-		Object2DDisplay sensorsDisplay = new Object2DDisplay(grid);
-		sensorsDisplay.setObjectList(sensorsList);
+		Object2DDisplay sensorsDisplay = new Object2DDisplay(environment);
+		sensorsDisplay.setObjectList(sensors);
 		surface.addDisplayableProbeable(sensorsDisplay, "Sensors");
 		addSimEventListener(surface);
 		surface.display();
@@ -149,7 +155,7 @@ public class SIMLauncher extends Repast3Launcher {
 		// plot number of different existing colors
 		plot.addSequence("Number of sensors", new Sequence() {
 			public double getSValue() {
-				return sensorsList.size();
+				return sensors.size();
 			}
 		});
 		plot.display();
@@ -167,5 +173,4 @@ public class SIMLauncher extends Repast3Launcher {
 		init.setNumRuns(1);   // works only in batch mode
 		init.loadModel(new SIMLauncher(), null, BATCH_MODE);
 	}
-
 }
