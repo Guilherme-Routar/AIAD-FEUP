@@ -2,6 +2,7 @@ package SIMLauncher;
 import java.awt.Color;
 import java.util.ArrayList;
 import Agents.Sensor;
+import Environment.Water;
 import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.wrapper.StaleProxyException;
@@ -21,16 +22,16 @@ public class SIMLauncher extends Repast3Launcher {
 
 	//Parameters
 	private ContainerController mainContainer;
-	private ArrayList<Sensor> sensors;
+	private ArrayList<Object> riverCells; 
 	//Simulation elements
-	private Object2DGrid environment;
+	private Object2DGrid river;
 	private DisplaySurface surface;
 	private OpenSequenceGraph plot;
 	//Values
 	private int NUM_SENSORS = 10;
-	private int ENV_WIDTH = 10;
-	private int ENV_HEIGHT = 10;
-	private static boolean BATCH_MODE = false;
+	private int RIVER_WIDTH = 100;
+	private int RIVER_HEIGHT = 20;
+	private static boolean BATCH_MODE = true;
 	//-----
 
 	public SIMLauncher() { 
@@ -46,27 +47,27 @@ public class SIMLauncher extends Repast3Launcher {
 		this.NUM_SENSORS = NUM_SENSORS;
 	}
 	
-	public int getENV_WIDTH() {
-		return ENV_WIDTH;
+	public int getRIVER_WIDTH() {
+		return RIVER_WIDTH;
 	}
 	
-	public void setENV_WIDTH(int ENV_WIDTH) {
-		this.ENV_WIDTH = ENV_WIDTH;
+	public void setRIVER_WIDTH(int RIVER_WIDTH) {
+		this.RIVER_WIDTH = RIVER_WIDTH;
 	}
 	
-	public int getENV_HEIGHT() {
-		return ENV_HEIGHT;
+	public int getRIVER_HEIGHT() {
+		return RIVER_HEIGHT;
 	}
 	
-	public void setENV_HEIGHT(int ENV_HEIGHT) {
-		this.ENV_HEIGHT = ENV_HEIGHT;
+	public void setRIVER_HEIGHT(int RIVER_HEIGHT) {
+		this.RIVER_HEIGHT = RIVER_HEIGHT;
 	}
 	//-----
 	
 	@Override
 	public String[] getInitParam() {
-		return new String[] {"NUM_SENSORS", "ENV_WIDTH", "ENV_HEIGHT"};
-	}
+		return new String[] {"NUM_SENSORS", "RIVER_WIDTH", "RIVER_HEIGHT"};
+	}	
 	
 	@Override
 	public String getName() {
@@ -79,17 +80,18 @@ public class SIMLauncher extends Repast3Launcher {
 		
 		if (surface != null) surface.dispose();
 
-		surface = new DisplaySurface(this, "Sensors environment");
-		registerDisplaySurface("Sensors environment", surface);
+		surface = new DisplaySurface(this, "Sensors river");
+		registerDisplaySurface("Sensors river", surface);
 	}
-
+	
 	@Override
 	protected void launchJADE() {
 
 		Runtime rt = Runtime.instance();
 		Profile p1 = new ProfileImpl();
 		mainContainer = rt.createMainContainer(p1);
-
+		
+		launchWater();
 		launchSensors();
 	}
 
@@ -98,29 +100,38 @@ public class SIMLauncher extends Repast3Launcher {
 		try {
 			int i;
 			for (i = 0; i < NUM_SENSORS; i++) 
-				mainContainer.acceptNewAgent("S" + (i + 1), createSensor()).start();
+				mainContainer.acceptNewAgent("S" + (i + 1), createSensor(i)).start();
 		} catch (StaleProxyException e) {
 			e.printStackTrace();
 		}
 	}
 
-	Sensor createSensor() {
+	Sensor createSensor(int pos) {
 
 		int x, y;
-		do {
-			x = Random.uniform.nextIntFromTo(0, environment.getSizeX() - 1);
-			y = Random.uniform.nextIntFromTo(0, environment.getSizeY() - 1);
-		} while (environment.getObjectAt(x, y) != null);
-
+		x = pos * (river.getSizeX() / getNUM_SENSORS());
+		y = river.getSizeY() / 2;
+		
 		Color color = new Color(Random.uniform.nextIntFromTo(0, 255), 
 				Random.uniform.nextIntFromTo(0, 255), 
 				Random.uniform.nextIntFromTo(0, 255));
-
-		Sensor sensor = new Sensor(x, y, environment, color);
-		environment.putObjectAt(x, y, sensor);
-		sensors.add(sensor);
+		
+		Sensor sensor = new Sensor(x, y, river, color);
+		river.putObjectAt(x, y, sensor);
+		riverCells.add(sensor);
 
 		return sensor;
+	}
+	
+	private void launchWater() {
+		
+		for (int i = 0; i < RIVER_WIDTH; i++) {
+			for (int j = 0; j < RIVER_HEIGHT; j++) {
+				Water waterCell = new Water(i,j);
+				river.putObjectAt(i, j, waterCell);
+				riverCells.add(waterCell);
+			}
+		}
 	}
 
 	//Runs after playing simulation
@@ -134,16 +145,16 @@ public class SIMLauncher extends Repast3Launcher {
 
 	//Create and store agents; Create space, data recorders
 	private void buildModel() {
-		sensors = new ArrayList<Sensor>();
-		environment = new Object2DGrid(ENV_WIDTH, ENV_HEIGHT);
+		riverCells = new ArrayList<Object>();
+		river = new Object2DGrid(RIVER_WIDTH, RIVER_HEIGHT);
 	}
 
 	//Create displays, charts
 	private void buildDisplay() {
 
 		//Grid 
-		Object2DDisplay sensorsDisplay = new Object2DDisplay(environment);
-		sensorsDisplay.setObjectList(sensors);
+		Object2DDisplay sensorsDisplay = new Object2DDisplay(river);
+		sensorsDisplay.setObjectList(riverCells);
 		surface.addDisplayableProbeable(sensorsDisplay, "Sensors");
 		addSimEventListener(surface);
 		surface.display();
@@ -155,7 +166,7 @@ public class SIMLauncher extends Repast3Launcher {
 		// plot number of different existing colors
 		plot.addSequence("Number of sensors", new Sequence() {
 			public double getSValue() {
-				return sensors.size();
+				return riverCells.size();
 			}
 		});
 		plot.display();
