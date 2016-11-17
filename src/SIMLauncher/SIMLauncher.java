@@ -9,8 +9,6 @@ import jade.wrapper.StaleProxyException;
 import sajas.core.Runtime;
 import sajas.sim.repast3.Repast3Launcher;
 import sajas.wrapper.ContainerController;
-import uchicago.src.sim.analysis.OpenSequenceGraph;
-import uchicago.src.sim.analysis.Sequence;
 import uchicago.src.sim.engine.Schedule;
 import uchicago.src.sim.engine.SimInit;
 import uchicago.src.sim.gui.DisplaySurface;
@@ -27,21 +25,28 @@ public class SIMLauncher extends Repast3Launcher {
 	//Simulation elements
 	private Object2DGrid river;
 	private DisplaySurface surface;
-	private OpenSequenceGraph plot;
+	//private OpenSequenceGraph plot;
 	//Values
 	private int NUM_SENSORS;
 	private static int CELLS_PER_KM = 5;
 	private int RIVER_WIDTH = 50 * CELLS_PER_KM;
 	private int RIVER_HEIGHT = 2 * CELLS_PER_KM;
 	private static boolean BATCH_MODE = true;
-	//Scenarios (Sensors allocation along the river)
-	private static boolean CHAINALONGRIVER = true; //Allocated in a line throughout the river
-	private static boolean ENDOFRIVER = false; //Alocated in collumns of 3 sensors by the end of the river
-	private static boolean RANDOM = false; //Alocated in random positions of the river
+	//Scenarios (Sensors allocation throughout the river)
+	private String allocation;
+	public enum Scenarios {
+		CHAINALONGRIVER, ENDOFRIVER, RANDOM
+	};
 	//-----
 
 	public SIMLauncher() { 
 		super(); 
+
+		//Sensors allocation throughout the river
+		Scenarios scenario = Scenarios.ENDOFRIVER;
+		if (scenario.equals(Scenarios.ENDOFRIVER)) setNUM_SENSORS(30);
+		else setNUM_SENSORS(50);
+		allocation = scenario.toString();
 	}
 
 	//Get and Set functions -----
@@ -85,7 +90,6 @@ public class SIMLauncher extends Repast3Launcher {
 		super.setup();
 
 		if (surface != null) surface.dispose();
-
 		surface = new DisplaySurface(this, "Sensors river");
 		registerDisplaySurface("Sensors river", surface);
 	}
@@ -106,8 +110,7 @@ public class SIMLauncher extends Repast3Launcher {
 		try {
 			Sensor sensor;
 			int y, x;
-			if (CHAINALONGRIVER) {
-				setNUM_SENSORS(50);
+			if (allocation == "CHAINALONGRIVER") {
 				for (int i = 0; i < NUM_SENSORS; i++) {
 					x = i * (river.getSizeX() / getNUM_SENSORS());
 					y = river.getSizeY() / 2;
@@ -115,8 +118,7 @@ public class SIMLauncher extends Repast3Launcher {
 					mainContainer.acceptNewAgent("S-" + i, sensor).start();
 				}
 			}
-			else if (ENDOFRIVER) {
-				setNUM_SENSORS(30);
+			else if (allocation == "ENDOFRIVER") {
 				for (int i = 0; i < NUM_SENSORS / 3; i++) {
 					for (int j = 0; j < 3; j++) {
 						x = (i * (river.getSizeX() / getNUM_SENSORS())) / 4;
@@ -126,8 +128,7 @@ public class SIMLauncher extends Repast3Launcher {
 					}
 				}
 			}
-			else if (RANDOM) {
-				setNUM_SENSORS(50);
+			else if (allocation == "RANDOM") {
 				for (int i = 0; i < NUM_SENSORS; i++) {
 					x = Random.uniform.nextIntFromTo(0, river.getSizeX() - 1);
 					y = Random.uniform.nextIntFromTo(0, river.getSizeY() - 1);
@@ -140,22 +141,15 @@ public class SIMLauncher extends Repast3Launcher {
 			e.printStackTrace();
 		}
 	}
-	
+
 	private Sensor allocateSensor(int x, int y) {
 
-		/*
-		//Random color for each sensor
-		Color color = new Color(Random.uniform.nextIntFromTo(0, 255), 
-				Random.uniform.nextIntFromTo(0, 255), 
-				Random.uniform.nextIntFromTo(0, 255));
-		*/
-		
 		Sensor sensor = new Sensor(x, y, river, Color.BLACK);
 		river.putObjectAt(x, y, sensor);
 		sensors.add(sensor);
 		return sensor;
 	}
-	
+
 	private void launchWater() {
 
 		for (int i = 0; i < RIVER_WIDTH; i++) {
@@ -171,9 +165,11 @@ public class SIMLauncher extends Repast3Launcher {
 	@Override
 	public void begin() {
 		buildModel();
-		buildDisplay();
-		super.begin();	
-		buildSchedule();
+		if (!BATCH_MODE) {
+			buildDisplay();	
+			buildSchedule();
+		}
+		super.begin();
 	}
 
 	//Create and store agents; Create space, data recorders
