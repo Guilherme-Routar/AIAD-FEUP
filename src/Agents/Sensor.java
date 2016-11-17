@@ -25,7 +25,7 @@ public class Sensor extends Agent implements Drawable{
 
 	@Override
 	public void draw(SimGraphics sim) {
-		sim.drawFastCircle(color);
+		sim.drawFastRect(color);
 	}
 
 	@Override

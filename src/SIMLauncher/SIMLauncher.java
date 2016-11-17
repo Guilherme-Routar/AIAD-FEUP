@@ -25,13 +25,12 @@ public class SIMLauncher extends Repast3Launcher {
 	//Simulation elements
 	private Object2DGrid river;
 	private DisplaySurface surface;
-	//private OpenSequenceGraph plot;
 	//Values
 	private int NUM_SENSORS;
-	private static int CELLS_PER_KM = 5;
+	private static int CELLS_PER_KM = 10;
 	private int RIVER_WIDTH = 50 * CELLS_PER_KM;
 	private int RIVER_HEIGHT = 2 * CELLS_PER_KM;
-	private static boolean BATCH_MODE = true;
+	private static boolean BATCH_MODE = false;
 	//Scenarios (Sensors allocation throughout the river)
 	private String allocation;
 	public enum Scenarios {
@@ -101,8 +100,8 @@ public class SIMLauncher extends Repast3Launcher {
 		Profile p1 = new ProfileImpl();
 		mainContainer = rt.createMainContainer(p1);
 
-		launchWater();
 		launchSensors();
+		launchWater();
 	}
 
 	private void launchSensors() {
@@ -112,8 +111,8 @@ public class SIMLauncher extends Repast3Launcher {
 			int y, x;
 			if (allocation == "CHAINALONGRIVER") {
 				for (int i = 0; i < NUM_SENSORS; i++) {
-					x = i * (river.getSizeX() / getNUM_SENSORS());
-					y = river.getSizeY() / 2;
+					x = i * (RIVER_WIDTH / getNUM_SENSORS());
+					y = RIVER_HEIGHT / 2;
 					sensor = allocateSensor(x, y);
 					mainContainer.acceptNewAgent("S-" + i, sensor).start();
 				}
@@ -121,8 +120,8 @@ public class SIMLauncher extends Repast3Launcher {
 			else if (allocation == "ENDOFRIVER") {
 				for (int i = 0; i < NUM_SENSORS / 3; i++) {
 					for (int j = 0; j < 3; j++) {
-						x = (i * (river.getSizeX() / getNUM_SENSORS())) / 4;
-						y = (j * 3) + 2;
+						x = (i * (RIVER_WIDTH / getNUM_SENSORS())) / 4;
+						y = (j * 4) + 6; //Hardcoded for 10 cells per km
 						sensor = allocateSensor(x, y);
 						mainContainer.acceptNewAgent("S-" + (i * 3 + j), sensor).start();
 					}
@@ -193,26 +192,11 @@ public class SIMLauncher extends Repast3Launcher {
 		addSimEventListener(surface);
 
 		surface.display();
-
-		//Graph
-		/*
-		plot = new OpenSequenceGraph("Number of River Cells", this);
-		plot.setAxisTitles("time", "n");
-
-		// plot number of different existing colors
-		plot.addSequence("River Cells", new Sequence() {
-			public double getSValue() {
-				return riverCells.size();
-			}
-		});
-		plot.display();
-		 */
 	}
 
 	//Build the schedule
 	private void buildSchedule() {
 		getSchedule().scheduleActionAtInterval(1, surface, "updateDisplay", Schedule.LAST);
-		//getSchedule().scheduleActionAtInterval(1, plot, "step", Schedule.LAST);
 	}
 
 	//Launching Repast3
