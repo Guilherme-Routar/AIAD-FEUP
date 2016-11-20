@@ -9,20 +9,14 @@ public class Sensor extends Agent implements Drawable{
 	
 	private int x;
 	private int y;
-	private Object2DGrid river;
 	private Color color;
 
 	public Sensor(int x, int y, Object2DGrid river, Color color) {
 		this.x = x;
 		this.y = y;
-		this.river = river;
 		this.color = color;
 	}
 	
-	public void setup() {
-		river.putObjectAt(this.x, this.y, this); 
-	}
-
 	@Override
 	public void draw(SimGraphics sim) {
 		sim.drawFastRect(color);
