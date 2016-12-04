@@ -1,6 +1,7 @@
 package SIMLauncher;
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Vector;
 
 import Agents.Sensor;
@@ -21,7 +22,7 @@ import uchicago.src.sim.util.Random;
 
 public class SIMLauncher extends Repast3Launcher {
 
-	private static boolean BATCH_MODE = false;
+	private static boolean BATCH_MODE = true;
 	//Parameters
 	private ContainerController mainContainer;
 	private ArrayList<Water> waterCells; 
@@ -105,7 +106,7 @@ public class SIMLauncher extends Repast3Launcher {
 					x = i * (RIVER_WIDTH / getNUM_SENSORS());
 					y = RIVER_HEIGHT / 2;
 					sensor = allocateSensor(x, y);
-					mainContainer.acceptNewAgent("S-" + i, sensor).start();
+					mainContainer.acceptNewAgent("S" + i, sensor).start();
 				}
 			}
 			else if (SCENARIO == Scenario.ENDOFRIVER) {
@@ -115,7 +116,7 @@ public class SIMLauncher extends Repast3Launcher {
 						x = (i * (RIVER_WIDTH / getNUM_SENSORS())) / 4;
 						y = (j * 4) + 6; //Hardcoded for 10 cells per km
 						sensor = allocateSensor(x, y);
-						mainContainer.acceptNewAgent("S-" + (i * 3 + j), sensor).start();
+						mainContainer.acceptNewAgent("S" + (i * 3 + j), sensor).start();
 					}
 				}
 			}
@@ -125,7 +126,7 @@ public class SIMLauncher extends Repast3Launcher {
 					x = Random.uniform.nextIntFromTo(0, RIVER_WIDTH - 1);
 					y = Random.uniform.nextIntFromTo(0, RIVER_HEIGHT - 1);
 					sensor = allocateSensor(x, y);
-					mainContainer.acceptNewAgent("S-" + i, sensor).start();
+					mainContainer.acceptNewAgent("S" + i, sensor).start();
 				}
 			}
 		}
@@ -135,7 +136,7 @@ public class SIMLauncher extends Repast3Launcher {
 	}
 
 	private Sensor allocateSensor(int x, int y) {
-		Sensor sensor = new Sensor(x, y, river, Color.BLACK);
+		Sensor sensor = new Sensor(x, y, Color.BLACK, this);
 		river.putObjectAt(x, y, sensor);
 		sensors.add(sensor);
 		return sensor;
@@ -260,6 +261,10 @@ public class SIMLauncher extends Repast3Launcher {
 	@Override
 	public String getName() {
 		return "WSN Optimization";
+	}
+	
+	public Object2DGrid getRIVER() {
+		return river;
 	}
 
 	public int getNUM_SENSORS() {
