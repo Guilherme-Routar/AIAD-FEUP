@@ -1,6 +1,7 @@
 package SIMLauncher;
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Vector;
 
@@ -13,6 +14,8 @@ import sajas.core.Runtime;
 import sajas.sim.repast3.Repast3Launcher;
 import sajas.wrapper.ContainerController;
 import uchicago.src.reflector.ListPropertyDescriptor;
+import uchicago.src.sim.analysis.OpenSequenceGraph;
+import uchicago.src.sim.analysis.Sequence;
 import uchicago.src.sim.engine.Schedule;
 import uchicago.src.sim.engine.SimInit;
 import uchicago.src.sim.gui.DisplaySurface;
@@ -22,7 +25,7 @@ import uchicago.src.sim.util.Random;
 
 public class SIMLauncher extends Repast3Launcher {
 
-	private static boolean BATCH_MODE = true;
+	private static boolean BATCH_MODE = false;
 	//Parameters
 	private ContainerController mainContainer;
 	private ArrayList<Water> waterCells; 
@@ -37,11 +40,27 @@ public class SIMLauncher extends Repast3Launcher {
 	//Scenarios (Sensors allocation throughout the river)
 	private Scenario SCENARIO;
 	public static enum Scenario {
-		CHAINALONGRIVER, ENDOFRIVER, RANDOM
+		CHAINALONGRIVER, 
+		ENDOFRIVER, 
+		RANDOM
 	};
 	//Pollution propagation elements
 	private int POLLUTION_Y_VALUE = RIVER_HEIGHT / 3;
 	private float SEDIMENTATION, ALPHA, BETA, GAMMA;
+	
+	
+	private OpenSequenceGraph batteryPlot;
+	//private OpenSequenceGraph pollutionGraph;
+	
+	private Performatives PERFORMATIVES;
+	public static enum Performatives {
+		INFORM,
+		FIRM_ADHERENCE,
+		ACK_ADHERENCE,
+		BREAK,
+		WIDTHDRAW
+	};
+	
 	//-----
 
 	//Initialization 
@@ -233,12 +252,70 @@ public class SIMLauncher extends Repast3Launcher {
 		addSimEventListener(surface);
 
 		surface.display();
+		
+		initBatteryPlot();
 	}
 
 	//Build the schedule
 	private void buildSchedule() {
 		getSchedule().scheduleActionBeginning(1, this, "updateRiver");
 		getSchedule().scheduleActionAtInterval(1, surface, "updateDisplay", Schedule.LAST);
+		getSchedule().scheduleActionAtInterval(1, batteryPlot, "step", Schedule.LAST);
+	}
+	/*
+	
+	private void initPollutionPlot() {
+		if (pollutionGraph != null)
+			pollutionGraph.dispose();
+
+		pollutionGraph = new OpenSequenceGraph("Pollution Detected", this);
+		pollutionGraph.setAxisTitles("time", "pollution");
+
+		for (int i = 0; i < NUM_SENSORS; i++) {
+			final int iPrime = i;
+
+			pollutionGraph.addSequence("S-" + i, new Sequence() {
+
+				@Override
+				public double getSValue() {
+					return sensors.get(iPrime).getLastSamplePollutionLevel();
+				}
+
+			});
+		}
+
+		pollutionGraph.display();
+	}
+	*/
+
+	private void initBatteryPlot() {
+		
+		if (batteryPlot != null) batteryPlot.dispose();
+
+		batteryPlot = new OpenSequenceGraph("Agents Battery Life", this);
+		batteryPlot.setAxisTitles("Time", "Battery");
+
+		batteryPlot.addSequence("Battery median", new Sequence() {
+
+			@Override
+			public double getSValue() {
+				List<Float> batteryLevels = new ArrayList<Float>();
+
+				for (Sensor sensor : sensors)
+					batteryLevels.add(sensor.getBattery());
+
+				Collections.sort(batteryLevels);
+
+				int listSize = batteryLevels.size();
+				int listMiddle = listSize / 2;
+
+				return listSize % 2 == 0 ? (batteryLevels.get(listMiddle) + batteryLevels.get(listMiddle - 1)) / 2
+						: batteryLevels.get(listMiddle);
+			}
+
+		});
+
+		batteryPlot.display();
 	}
 
 
@@ -297,6 +374,10 @@ public class SIMLauncher extends Repast3Launcher {
 
 	public void setSCENARIO(Scenario SCENARIO) {
 		this.SCENARIO = SCENARIO;
+	}
+	
+	public ArrayList<Sensor> getSENSORS() {
+		return sensors;
 	}
 	//-----
 }

@@ -1,11 +1,10 @@
 package Agents;
 import sajas.core.AID;
 import sajas.core.Agent;
-import uchicago.src.repastdemos.genetic.GeneticChangeModel;
 import uchicago.src.sim.gui.Drawable;
 import uchicago.src.sim.gui.SimGraphics;
-import uchicago.src.sim.space.Object2DGrid;
 import java.awt.Color;
+import java.util.ArrayList;
 import java.util.Vector;
 
 import Environment.Water;
@@ -20,14 +19,26 @@ public class Sensor extends Agent implements Drawable{
 	private Color color;
 	private SIMLauncher launcher;
 	
-	private float battery;
+	private float BATTERY;
+	private Status STATUS;
+	private boolean LEADER;
+	private ArrayList<Sensor> neighbours;
+	
+	
+	public static enum Status {
+		ON, 
+		OFF, 
+		SLEEP 
+	};
 
 	public Sensor(int x, int y, Color color, SIMLauncher launcher) {
 		this.x = x;
 		this.y = y;
 		this.color = color;
 		this.launcher = launcher;
-		this.battery = 100;
+		
+		this.BATTERY = 100;
+		this.STATUS = Status.ON;
 	}
 	
 	@Override
@@ -39,18 +50,17 @@ public class Sensor extends Agent implements Drawable{
 			@Override
 			public void action() {
 				
+				//System.out.println(this.getAgent().getLocalName());
+				
 				ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
-				msg.addReceiver(new AID("S0", AID.ISLOCALNAME));
-				msg.setLanguage("English");
-				msg.setOntology("Battery status");
-				msg.setContent("Battery Life: " + battery + "%. \nTrasmission Over.");
+				msg.addReceiver(new AID("S1", AID.ISLOCALNAME));
+				msg.setContent("Battery Life: " + BATTERY);
 				send(msg);
 				
 				
+				//Message handler
 				addBehaviour(new CyclicBehaviour() {
-					
 					private static final long serialVersionUID = 1L;
-
 					@Override
 					public void action() {
 						ACLMessage msg = myAgent.receive();
@@ -61,11 +71,26 @@ public class Sensor extends Agent implements Drawable{
 						else {
 							block();
 						}
-						
 					}
 				});
 				
-				//sampleEnvironment();
+				//Sampling handler
+				
+				addBehaviour(new CyclicBehaviour() {
+					private static final long serialVersionUID = 1L;
+					@Override
+					public void action() {
+						if (BATTERY > 0) {
+							sampleEnvironment();
+							updateBattery();
+						}
+						else {
+							//System.out.println(msg.getSender().getLocalName() + " died @ " + BATTERY + "%");
+							doDelete();
+							color = new Color(0, 0, 255);
+						}
+					}
+				});
 			}
 		});
 	}
@@ -74,11 +99,36 @@ public class Sensor extends Agent implements Drawable{
 		
 		
 		Vector<?> vec = this.launcher.getRIVER().getMooreNeighbors(10, 10, false);
-		System.out.println("Sensor " + this.getLocalName() + " is sampling..");
-		for (Object cell : vec) 
-			if (cell instanceof Water)
-				System.out.println("Retrieved " + ((Water) cell).getPollution());
+		//System.out.println("Sensor " + this.getLocalName() + " is sampling..");
+		//for (Object cell : vec) 
+			//if (cell instanceof Water)
+				//System.out.println("Retrieved " + ((Water) cell).getPollution());
 		
+	}
+	
+	public void updateBattery() {
+		
+		if (BATTERY < 20) color = Color.RED;
+		else if (BATTERY < 50) color = Color.BLACK;
+		else color = Color.GREEN;
+		
+		BATTERY = BATTERY - 0.1f;
+	}
+	
+	//Not tested
+	public void getNeighbours() {
+		
+		float dist = -1;
+		ArrayList<Sensor> sensors = launcher.getSENSORS();
+		for (Sensor sensor : sensors) {
+			dist = (float) Math.sqrt(
+					(sensor.getX() - this.x)^2
+					+
+					(sensor.getY() - this.y)^2
+					);
+			
+			if (dist < 20) neighbours.add(sensor);
+		}
 	}
 	
 	@Override
@@ -98,5 +148,9 @@ public class Sensor extends Agent implements Drawable{
 	
 	public Color getColor() {
 		return color;
+	}
+	
+	public float getBattery() {
+		return BATTERY;
 	}
 }
