@@ -93,7 +93,7 @@ public class SIMLauncher extends Repast3Launcher {
 		for (int i = 0; i < Scenario.values().length; i++) vecScenarios.add(Scenario.values()[i]);
 		descriptors.put("SCENARIO", new ListPropertyDescriptor("SCENARIO", vecScenarios));
 	}
-
+	
 	//-----
 
 	@Override
