@@ -25,7 +25,7 @@ import uchicago.src.sim.util.Random;
 
 public class SIMLauncher extends Repast3Launcher {
 
-	private static boolean BATCH_MODE = false;
+	private static boolean BATCH_MODE = true;
 	//Parameters
 	private ContainerController mainContainer;
 	private ArrayList<Water> waterCells; 
