@@ -166,15 +166,6 @@ public class Sensor extends Agent implements Drawable{
 	public void consumeBattery() {
 		BATTERY--;
 	}
-
-	public double getAdherence() {
-
-		//double valuesSimilarity, varModelCertainty;
-
-
-		return 1;
-		//return valuesSimilarity * varModelCertainty;
-	}
 	
 	public Water getLastPollutSample() {
 		return pollutionSamples.get(pollutionSamples.size() - 1);
@@ -293,6 +284,57 @@ public class Sensor extends Agent implements Drawable{
 			}
 		});
 	}
+	
+	// ---------------------------------------------------
+	//                 COSA CALCULATIONS
+	// ---------------------------------------------------
+	
+	public double calcAdherence(double pollutionSample) {
+		
+		
+		//Vars to-be-initialized
+		double stdDev = 0;
+		double eHj = 0;
+		double eHmax = 0;
+		double eHmin = 0;
+		// --------------------
+		
+		double sensorPollutionSamplesMean = calcMean();
+		
+		double valuesSimilarity = 
+				calcNormalDistribution(pollutionSample, sensorPollutionSamplesMean, stdDev)
+				/
+				calcNormalDistribution(sensorPollutionSamplesMean, sensorPollutionSamplesMean, stdDev);
+		
+		double variableModelCertainty = 1 - ((eHj - eHmin) / (eHmax - eHmin));
+		
+		return valuesSimilarity * variableModelCertainty;
+	}
+	
+	public double calcMean() {
+		double sum = 0;
+		for (Water sample : pollutionSamples) {
+			sum += sample.getPollution();
+		}
+		return sum / pollutionSamples.size();
+		
+	}
+	
+	public double calcNormalDistribution(double x, double u, double stdDev) {
+		
+		double leftHand = 1 / (stdDev * Math.sqrt(2 * Math.PI));
+		double rightHand = Math.pow(Math.E, ((-1 * Math.pow(x - u, 2)) 
+											 / 
+											 (2 * Math.pow(stdDev, 2))));
+		return leftHand * rightHand;
+				
+	}
+	
+	public double calcLead() {
+		return 0;
+	}
+	
+	// ---------------------------------------------------
 
 	@Override
 	public void draw(SimGraphics sim) {
