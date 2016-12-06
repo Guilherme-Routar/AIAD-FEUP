@@ -52,15 +52,6 @@ public class SIMLauncher extends Repast3Launcher {
 	private OpenSequenceGraph batteryPlot;
 	//private OpenSequenceGraph pollutionGraph;
 	
-	private Performatives PERFORMATIVES;
-	public static enum Performatives {
-		INFORM,
-		FIRM_ADHERENCE,
-		ACK_ADHERENCE,
-		BREAK,
-		WIDTHDRAW
-	};
-	
 	//-----
 
 	//Initialization 
@@ -170,6 +161,7 @@ public class SIMLauncher extends Repast3Launcher {
 			}
 		}
 	}
+
 	
 	//Pollution handling -----
 	

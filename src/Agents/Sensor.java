@@ -5,11 +5,17 @@ import uchicago.src.sim.gui.Drawable;
 import uchicago.src.sim.gui.SimGraphics;
 import java.awt.Color;
 import java.util.ArrayList;
-import java.util.Vector;
 
 import Environment.Water;
 import SIMLauncher.SIMLauncher;
 import jade.lang.acl.ACLMessage;
+import jade.lang.acl.MessageTemplate;
+import jade.lang.acl.UnreadableException;
+import messages.Adherence;
+import messages.Break;
+import messages.Leadership;
+import messages.Sample;
+import messages.Withdraw;
 import sajas.core.behaviours.CyclicBehaviour;
 
 public class Sensor extends Agent implements Drawable{
@@ -21,10 +27,24 @@ public class Sensor extends Agent implements Drawable{
 
 	private float BATTERY;
 	private Status STATUS;
-	private boolean LEADER;
-	private ArrayList<String> neighbours;
+	private ArrayList<Sensor> neighbours;
 	private int sleepCounter;
 
+	private ArrayList<Water> pollutionSamples;
+
+	
+	private boolean LEADER;
+	private Sensor LEADEROFME;
+	private boolean DEPENDANT;
+	private ArrayList<Sensor> dependantNeighbours;
+	
+	// -----
+	int FIRM_ADHERENCE = ACLMessage.ACCEPT_PROPOSAL;
+	int ACK_ADHERENCE = ACLMessage.CONFIRM;
+	int BREAK_BOUND = ACLMessage.CANCEL;
+	// -----
+	
+	//Enums
 
 	public static enum Status {
 		ON, 
@@ -40,7 +60,14 @@ public class Sensor extends Agent implements Drawable{
 
 		this.BATTERY = 1000;
 		this.STATUS = Status.ON;
-		neighbours = new ArrayList<String>();
+		neighbours = new ArrayList<Sensor>();
+		pollutionSamples = new ArrayList<Water>();
+		
+		this.LEADER = false;
+		this.LEADEROFME = null;
+		this.DEPENDANT = false;
+		dependantNeighbours = new ArrayList<Sensor>();
+
 	}
 
 	@Override
@@ -61,9 +88,29 @@ public class Sensor extends Agent implements Drawable{
 
 	//Retrieves pollution sample on the sensor's position
 	public void sampleEnvironment() {
-		System.out.println(this.getLocalName() + " scanned:");
-		Water cell = (Water) launcher.getRIVER().getObjectAt(this.x, this.y);
-		System.out.println(cell.getPollution());
+		Water sampleCell = (Water) launcher.getRIVER().getObjectAt(this.x, this.y);
+		sendSample(sampleCell);
+	}
+
+	public void sendSample(Water sampleCell) {
+
+		try {
+			
+			//Creating sample
+			Sample sample = new Sample(sampleCell.getPollution());
+			
+			ACLMessage msg = new ACLMessage(ACLMessage.INFORM); //Performatives.INFORM
+			for (Sensor sensor : neighbours) {
+				msg.addReceiver(sensor.getAID());
+			}
+
+			msg.setContentObject(sample);
+			pollutionSamples.add(sampleCell);
+
+		} catch (Exception e) {
+			System.out.println("Failed to send sample");
+		}
+
 	}
 
 	//Builds the list of neighbours of the current node
@@ -72,7 +119,7 @@ public class Sensor extends Agent implements Drawable{
 		ArrayList<Sensor> sensors = launcher.getSENSORS();
 		for (Sensor sensor : sensors) {
 			dist = getDist(sensor);
-			if (dist <= 15 && this != sensor) neighbours.add(sensor.getLocalName());
+			if (dist <= 15 && this != sensor) neighbours.add(sensor);
 		}
 	}
 
@@ -103,9 +150,9 @@ public class Sensor extends Agent implements Drawable{
 
 		updateColor();
 	}
-	
+
 	public void updateColor() {
-		if (STATUS == Status.SLEEP) color = Color.BLACK;
+		if (STATUS == Status.SLEEP) color = Color.GRAY;
 		else if (BATTERY < 150) color = Color.RED;
 		else if (BATTERY < 400) color = Color.YELLOW;
 		else color = Color.GREEN;
@@ -118,6 +165,133 @@ public class Sensor extends Agent implements Drawable{
 
 	public void consumeBattery() {
 		BATTERY--;
+	}
+
+	public double getAdherence() {
+
+		//double valuesSimilarity, varModelCertainty;
+
+
+		return 1;
+		//return valuesSimilarity * varModelCertainty;
+	}
+	
+	public Water getLastPollutSample() {
+		return pollutionSamples.get(pollutionSamples.size() - 1);
+	}
+
+	//Messages handling -----
+
+	public void msgHandler() {
+		
+		addBehaviour(new CyclicBehaviour(this) {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void action() {
+				
+				ACLMessage msg = myAgent.receive();
+				Object content = null;
+				try {
+					content = msg.getContentObject();
+				} catch (UnreadableException e) {
+					System.out.println("Error processing message content");
+					e.printStackTrace();
+				}
+				
+				//if (msg.getPerformative() == ACLMessage.INFORM) 
+				int Performative = msg.getPerformative();
+				
+				if (msg != null) {
+
+					//INFORM
+					if (Performative == ACLMessage.INFORM) {
+
+						//Sensor received inform sample message
+						if (content instanceof Sample) {
+							
+							//Sample received
+							((Sample) content).getContent();
+							//#1 receive SAMPLE
+							//updateNeighbourInfo();
+							//adherence2NeighbourEvaluation();
+							//updateOwnMaxAdherence();
+							//if changesOnOwnMaxAdherence
+							//then
+							//inform(me, a l , maxAdh, t);
+							//end
+						}
+						//Sensor received inform adherence message
+						else if (content instanceof Adherence) {
+							
+							//Adherence reply
+							((Adherence) content).getContent();
+							//#2 receive ADHERENCE
+							//inform(me, a r , lead); //Send leadership inform reply
+							//updateNeighbourInfo();
+							//adherence2NeighbourEvaluation();
+							//updateOwnMaxAdherence();
+							//if changesOnOwnMaxAdherence
+							//then
+							//inform(me, a l , maxAdh, t);
+							//end
+						}
+						//Sensor received inform leadership message
+						else if (content instanceof Leadership) {
+							
+							//Leadership reply
+							((Leadership) content).getContent();
+							//#3 receive LEADERSHIP
+							//if checkAgainstOwnLead then
+							//firmAdherence(me, a l );
+							//end
+						}
+					}
+					//Sensor received firm_adherence message
+					//FIRM_ADHERENCE
+					else if (Performative == FIRM_ADHERENCE) {
+
+						//if checkAgainstOwnLead then
+						//ackAdherence(me, a r );
+						//updateOwnLeadValue();
+						//updateDependentGroup();
+						//end
+
+					}
+					//Sensor received ack_adherence message
+					//ACK_ADHERENCE
+					else if (Performative == ACK_ADHERENCE) {
+						//if !leader ∧ a l ! = a L then
+						//	withdraw(me, a L );
+						//	end
+						//	if leader ∧ D(me)! = ∅ then
+						//	while D(me)! = ∅ do
+						//	break(me, a p );
+						//	end
+						//	end
+						//	updateRoleState(dependant);
+						//	sleep(t);
+					}
+					//Sensor received break or withdraw message
+					//BREAK | WITHDRAW
+					else if (Performative == BREAK_BOUND) {
+						
+						//leader wants out
+						if (content instanceof Break){
+							//updateRoleState(leader);
+						}
+						//dependant wants out
+						else if (content instanceof Withdraw) {
+							//D(me) ← D(me)\a p ;
+							//updateRoleState(leader);
+						}
+					}
+				}
+				else 
+					block();
+			}
+		});
 	}
 
 	@Override
