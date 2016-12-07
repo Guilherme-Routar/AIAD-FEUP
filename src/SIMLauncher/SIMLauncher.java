@@ -111,7 +111,7 @@ public class SIMLauncher extends Repast3Launcher {
 			Sensor sensor;
 			int y, x;
 			if (SCENARIO == Scenario.CHAINALONGRIVER) {
-				setNUM_SENSORS(2);
+				setNUM_SENSORS(50);
 				for (int i = 0; i < NUM_SENSORS; i++) {
 					x = i * (RIVER_WIDTH / getNUM_SENSORS());
 					y = RIVER_HEIGHT / 2;

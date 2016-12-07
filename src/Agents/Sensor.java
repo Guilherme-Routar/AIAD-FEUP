@@ -87,7 +87,7 @@ public class Sensor extends Agent implements Drawable{
 	public void setup() {
 		
 		getNeighbours();
-		
+
 		addBehaviour(new CyclicBehaviour() {
 			private static final long serialVersionUID = 1L;
 			@Override
@@ -126,8 +126,8 @@ public class Sensor extends Agent implements Drawable{
 		
 		System.out.print(this.getLocalName() + " sent sample to Agent ");
 		for (Sensor sensor : neighbours) {
-			System.out.println(sensor.getLocalName());
-		}
+			System.out.print(sensor.getLocalName() + " ");
+		}//System.out.println("");
 	}
 
 	//Builds the list of neighbours of the current node
@@ -196,6 +196,7 @@ public class Sensor extends Agent implements Drawable{
 
 			private static final long serialVersionUID = 1L;
 
+			@SuppressWarnings("unused")
 			@Override
 			public void action() {
 				
@@ -214,7 +215,6 @@ public class Sensor extends Agent implements Drawable{
 							content = msg.getContentObject();
 						} catch (UnreadableException e) {
 							System.out.println("Error processing message content");
-							e.printStackTrace();
 						}
 
 						//Sensor received inform sample message
@@ -438,6 +438,31 @@ public class Sensor extends Agent implements Drawable{
 		return prestige * capacity * representativeness;
 		*/
 		return 0;
+	}
+	
+	public double CV(ArrayList<Double> List) {
+		return calcStdDev(List) / calcMean(List);
+	}
+	
+	public double calcStdDev(ArrayList<Double> List) {
+		return Math.sqrt(calcVariance(List));
+	}
+	
+	public double calcVariance(ArrayList<Double> List) {
+		double mean = calcMean(List);
+		double sum = 0;
+		for (Double val : List) {
+			sum += (mean - val) * (mean - val); 
+		}
+		return sum / List.size();
+	}
+	
+	public double calcMean(ArrayList<Double> List) {
+		double sum = 0;
+		for (Double val : List) {
+			sum += val;
+		}
+		return sum;
 	}
 	
 	// ---------------------------------------------------
