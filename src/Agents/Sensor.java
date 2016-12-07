@@ -41,8 +41,10 @@ public class Sensor extends Agent implements Drawable{
 	// -----
 	int FIRM_ADHERENCE = ACLMessage.ACCEPT_PROPOSAL;
 	int ACK_ADHERENCE = ACLMessage.CONFIRM;
-	int BREAK_BOUND = ACLMessage.CANCEL;
 	// -----
+	
+	private double MIN_STD_DEV;
+	private double MAX_STD_DEV;
 	
 	//Enums
 
@@ -67,6 +69,9 @@ public class Sensor extends Agent implements Drawable{
 		this.LEADEROFME = null;
 		this.DEPENDANT = false;
 		dependantNeighbours = new ArrayList<Sensor>();
+		
+		this.MIN_STD_DEV = 0;
+		this.MAX_STD_DEV = 100;
 
 	}
 
@@ -266,7 +271,7 @@ public class Sensor extends Agent implements Drawable{
 					}
 					//Sensor received break or withdraw message
 					//BREAK | WITHDRAW
-					else if (Performative == BREAK_BOUND) {
+					else if (Performative == ACLMessage.CANCEL) {
 						
 						//leader wants out
 						if (content instanceof Break){
@@ -294,19 +299,24 @@ public class Sensor extends Agent implements Drawable{
 		
 		//Vars to-be-initialized
 		double stdDev = 0;
-		double eHj = 0;
-		double eHmax = 0;
-		double eHmin = 0;
 		// --------------------
 		
-		double sensorPollutionSamplesMean = calcMean();
+		double Hj = calcEntropy(stdDev);
+		double Hmax = calcEntropy(MAX_STD_DEV);
+		double Hmin = calcEntropy(MIN_STD_DEV);
+		
+		double pollutionSamplesMean = calcMean();
 		
 		double valuesSimilarity = 
-				calcNormalDistribution(pollutionSample, sensorPollutionSamplesMean, stdDev)
+				calcNormalDistribution(pollutionSample, pollutionSamplesMean, stdDev)
 				/
-				calcNormalDistribution(sensorPollutionSamplesMean, sensorPollutionSamplesMean, stdDev);
+				calcNormalDistribution(pollutionSamplesMean, pollutionSamplesMean, stdDev);
 		
-		double variableModelCertainty = 1 - ((eHj - eHmin) / (eHmax - eHmin));
+		
+		double variableModelCertainty = 1 - ((Math.pow(Math.E, Hj) - Math.pow(Math.E, Hmin)) 
+											/ 
+											(Math.pow(Math.E, Hmax) - Math.pow(Math.E, Hmin)));
+		 
 		
 		return valuesSimilarity * variableModelCertainty;
 	}
@@ -328,6 +338,10 @@ public class Sensor extends Agent implements Drawable{
 											 (2 * Math.pow(stdDev, 2))));
 		return leftHand * rightHand;
 				
+	}
+	
+	public double calcEntropy(double stdDev) {
+		return Math.log(stdDev * Math.sqrt(2 * Math.PI * Math.E));
 	}
 	
 	public double calcLead() {
