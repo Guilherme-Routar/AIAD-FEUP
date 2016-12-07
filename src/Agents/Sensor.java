@@ -25,7 +25,10 @@ public class Sensor extends Agent implements Drawable{
 	private Color color;
 	private SIMLauncher launcher;
 
+	private float MAX_BATTERY;
 	private float BATTERY;
+	private float SECURITY_BATTERY;
+	
 	private Status STATUS;
 	private ArrayList<Sensor> neighbours;
 	private int sleepCounter;
@@ -43,6 +46,7 @@ public class Sensor extends Agent implements Drawable{
 	int ACK_ADHERENCE = ACLMessage.CONFIRM;
 	// -----
 	
+	private double STD_DEV;
 	private double MIN_STD_DEV;
 	private double MAX_STD_DEV;
 	
@@ -60,7 +64,10 @@ public class Sensor extends Agent implements Drawable{
 		this.color = color;
 		this.launcher = launcher;
 
-		this.BATTERY = 1000;
+		this.MAX_BATTERY = 1000;
+		this.BATTERY = MAX_BATTERY;
+		this.SECURITY_BATTERY = 100; //To fix value
+	
 		this.STATUS = Status.ON;
 		neighbours = new ArrayList<Sensor>();
 		pollutionSamples = new ArrayList<Water>();
@@ -70,6 +77,7 @@ public class Sensor extends Agent implements Drawable{
 		this.DEPENDANT = false;
 		dependantNeighbours = new ArrayList<Sensor>();
 		
+		this.STD_DEV = 0;
 		this.MIN_STD_DEV = 0;
 		this.MAX_STD_DEV = 100;
 
@@ -77,18 +85,18 @@ public class Sensor extends Agent implements Drawable{
 
 	@Override
 	public void setup() {
-		//Sampling handler
+		
+		getNeighbours();
+		
 		addBehaviour(new CyclicBehaviour() {
 			private static final long serialVersionUID = 1L;
 			@Override
 			public void action() {
-				if (BATTERY > 0) updateSensor();
-				else {
-					doDelete();
-					color = new Color(0, 0, 255);
-				}
+					updateSensor();
 			}
 		});
+		
+		msgHandler();
 	}
 
 	//Retrieves pollution sample on the sensor's position
@@ -99,23 +107,27 @@ public class Sensor extends Agent implements Drawable{
 
 	public void sendSample(Water sampleCell) {
 
+		//Creating sample
+		Sample sample = new Sample(sampleCell.getPollution());
+		
+		ACLMessage msg = new ACLMessage(ACLMessage.INFORM); //Performatives.INFORM
+		for (Sensor sensor : neighbours) {
+			msg.addReceiver(sensor.getAID());
+		}
+		
 		try {
-			
-			//Creating sample
-			Sample sample = new Sample(sampleCell.getPollution());
-			
-			ACLMessage msg = new ACLMessage(ACLMessage.INFORM); //Performatives.INFORM
-			for (Sensor sensor : neighbours) {
-				msg.addReceiver(sensor.getAID());
-			}
-
 			msg.setContentObject(sample);
 			pollutionSamples.add(sampleCell);
+			send(msg);
 
 		} catch (Exception e) {
 			System.out.println("Failed to send sample");
 		}
-
+		
+		System.out.print(this.getLocalName() + " sent sample to Agent ");
+		for (Sensor sensor : neighbours) {
+			System.out.println(sensor.getLocalName());
+		}
 	}
 
 	//Builds the list of neighbours of the current node
@@ -188,27 +200,40 @@ public class Sensor extends Agent implements Drawable{
 			public void action() {
 				
 				ACLMessage msg = myAgent.receive();
-				Object content = null;
-				try {
-					content = msg.getContentObject();
-				} catch (UnreadableException e) {
-					System.out.println("Error processing message content");
-					e.printStackTrace();
-				}
-				
-				//if (msg.getPerformative() == ACLMessage.INFORM) 
+			
 				int Performative = msg.getPerformative();
 				
 				if (msg != null) {
+					
+					Object content = null;
 
 					//INFORM
 					if (Performative == ACLMessage.INFORM) {
+						
+						try {
+							content = msg.getContentObject();
+						} catch (UnreadableException e) {
+							System.out.println("Error processing message content");
+							e.printStackTrace();
+						}
 
 						//Sensor received inform sample message
 						if (content instanceof Sample) {
 							
-							//Sample received
 							((Sample) content).getContent();
+							
+							try {
+								ACLMessage reply = msg.createReply();
+								reply.setContent("Received sample, sending adherence = 10");
+								reply.setContentObject(new Adherence(10));
+								send(reply);
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
+							
+							System.out.println("Received sample, sending adherence = 10");
+							
+							//Sample received
 							//#1 receive SAMPLE
 							//updateNeighbourInfo();
 							//adherence2NeighbourEvaluation();
@@ -221,8 +246,19 @@ public class Sensor extends Agent implements Drawable{
 						//Sensor received inform adherence message
 						else if (content instanceof Adherence) {
 							
-							//Adherence reply
 							((Adherence) content).getContent();
+							
+							try {
+								ACLMessage reply = msg.createReply();
+								reply.setContent("Received adh value, sending leadership = 10");
+								reply.setContentObject(new Leadership(10));
+								send(reply);
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
+							
+							System.out.println("Received adh value, sending leadership = 10");
+							//Adherence reply
 							//#2 receive ADHERENCE
 							//inform(me, a r , lead); //Send leadership inform reply
 							//updateNeighbourInfo();
@@ -236,8 +272,20 @@ public class Sensor extends Agent implements Drawable{
 						//Sensor received inform leadership message
 						else if (content instanceof Leadership) {
 							
-							//Leadership reply
 							((Leadership) content).getContent();
+							
+							try {
+								ACLMessage reply = msg.createReply();
+								reply.setPerformative(FIRM_ADHERENCE);
+								reply.setContent("received lead value, sending firm_adherence msg");
+								send(reply);
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
+							
+							System.out.println("received lead value, sending firm_adherence msg");
+							
+							//Leadership reply
 							//#3 receive LEADERSHIP
 							//if checkAgainstOwnLead then
 							//firmAdherence(me, a l );
@@ -247,7 +295,18 @@ public class Sensor extends Agent implements Drawable{
 					//Sensor received firm_adherence message
 					//FIRM_ADHERENCE
 					else if (Performative == FIRM_ADHERENCE) {
-
+						
+						try {
+							ACLMessage reply = msg.createReply();
+							reply.setPerformative(ACK_ADHERENCE);
+							reply.setContent("Received firm_adh msg, sending ack_adherence msg");
+							send(reply);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+						
+						System.out.println("Received firm_adh msg, sending ack_adherence msg");
+						
 						//if checkAgainstOwnLead then
 						//ackAdherence(me, a r );
 						//updateOwnLeadValue();
@@ -258,6 +317,17 @@ public class Sensor extends Agent implements Drawable{
 					//Sensor received ack_adherence message
 					//ACK_ADHERENCE
 					else if (Performative == ACK_ADHERENCE) {
+						
+						try {
+							ACLMessage reply = msg.createReply();
+							reply.setContent("Received ack_adh, now forming coalition");
+							send(reply);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+						
+						System.out.println("Received ack_adh, now forming coalition");
+						
 						//if !leader ∧ a l ! = a L then
 						//	withdraw(me, a L );
 						//	end
@@ -273,6 +343,13 @@ public class Sensor extends Agent implements Drawable{
 					//BREAK | WITHDRAW
 					else if (Performative == ACLMessage.CANCEL) {
 						
+						try {
+							content = msg.getContentObject();
+						} catch (UnreadableException e) {
+							System.out.println("Error processing message content");
+							e.printStackTrace();
+						}
+						
 						//leader wants out
 						if (content instanceof Break){
 							//updateRoleState(leader);
@@ -285,7 +362,7 @@ public class Sensor extends Agent implements Drawable{
 					}
 				}
 				else 
-					block();
+					block(); 
 			}
 		});
 	}
@@ -296,21 +373,16 @@ public class Sensor extends Agent implements Drawable{
 	
 	public double calcAdherence(double pollutionSample) {
 		
-		
-		//Vars to-be-initialized
-		double stdDev = 0;
-		// --------------------
-		
-		double Hj = calcEntropy(stdDev);
+		double Hj = calcEntropy(STD_DEV);
 		double Hmax = calcEntropy(MAX_STD_DEV);
 		double Hmin = calcEntropy(MIN_STD_DEV);
 		
 		double pollutionSamplesMean = calcMean();
 		
 		double valuesSimilarity = 
-				calcNormalDistribution(pollutionSample, pollutionSamplesMean, stdDev)
+				calcNormalDistribution(pollutionSample, pollutionSamplesMean, STD_DEV)
 				/
-				calcNormalDistribution(pollutionSamplesMean, pollutionSamplesMean, stdDev);
+				calcNormalDistribution(pollutionSamplesMean, pollutionSamplesMean, STD_DEV);
 		
 		
 		double variableModelCertainty = 1 - ((Math.pow(Math.E, Hj) - Math.pow(Math.E, Hmin)) 
@@ -345,6 +417,26 @@ public class Sensor extends Agent implements Drawable{
 	}
 	
 	public double calcLead() {
+		/*
+		//Prestige calculation
+		double prestige = 0;
+		
+		for (Sensor sensor : dependantNeighbours) {
+			//calcAdherence(pollutionSamp);
+		}
+		
+		//Capacity calculation
+		double capacity = (BATTERY - SECURITY_BATTERY) / MAX_BATTERY;
+		
+		//Representativeness calculation
+		
+		double b = Math.pow(Math.E, 10);
+		double a = 1 / (b);
+		
+		double representativeness = 0;
+		
+		return prestige * capacity * representativeness;
+		*/
 		return 0;
 	}
 	
