@@ -1,4 +1,4 @@
-package messages;
+package ACLMsgContentObjects.INFORM;
 
 import jade.util.leap.Serializable;
 

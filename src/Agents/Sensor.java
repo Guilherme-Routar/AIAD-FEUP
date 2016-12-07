@@ -6,16 +6,16 @@ import uchicago.src.sim.gui.SimGraphics;
 import java.awt.Color;
 import java.util.ArrayList;
 
+import ACLMsgContentObjects.CANCEL.Break;
+import ACLMsgContentObjects.CANCEL.Withdraw;
+import ACLMsgContentObjects.INFORM.Adherence;
+import ACLMsgContentObjects.INFORM.Leadership;
+import ACLMsgContentObjects.INFORM.Sample;
 import Environment.Water;
 import SIMLauncher.SIMLauncher;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
-import messages.Adherence;
-import messages.Break;
-import messages.Leadership;
-import messages.Sample;
-import messages.Withdraw;
 import sajas.core.behaviours.CyclicBehaviour;
 
 public class Sensor extends Agent implements Drawable{

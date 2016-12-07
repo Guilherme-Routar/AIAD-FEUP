@@ -1,4 +1,4 @@
-package messages;
+package ACLMsgContentObjects.INFORM;
 
 public class Leadership extends Inform{
 	
