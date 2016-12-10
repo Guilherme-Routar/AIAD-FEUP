@@ -7,6 +7,7 @@ import java.util.Vector;
 
 import Agents.Sensor;
 import Environment.Water;
+import jade.core.AID;
 import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.wrapper.StaleProxyException;
@@ -25,7 +26,7 @@ import uchicago.src.sim.util.Random;
 
 public class SIMLauncher extends Repast3Launcher {
 
-	private static boolean BATCH_MODE = true;
+	private static boolean BATCH_MODE = false;
 	//Parameters
 	private ContainerController mainContainer;
 	private ArrayList<Water> waterCells; 
@@ -52,12 +53,12 @@ public class SIMLauncher extends Repast3Launcher {
 	private OpenSequenceGraph batteryPlot;
 	//private OpenSequenceGraph pollutionGraph;
 	
+	
+	
 	//-----
 
 	//Initialization 
 	public SIMLauncher() { 
-		super(); 
-		
 		initRiverDimensions();
 		initPollutionValues();
 		initScenario();
@@ -102,7 +103,12 @@ public class SIMLauncher extends Repast3Launcher {
 		mainContainer = rt.createMainContainer(p1);
 
 		launchSensors();
+		getSensorsNeighbours();
 		launchWater();
+	}
+	
+	private void getSensorsNeighbours() {
+		for (Sensor sensor : sensors) sensor.getNeighbours();
 	}
 
 	private void launchSensors() {
@@ -146,7 +152,9 @@ public class SIMLauncher extends Repast3Launcher {
 	}
 
 	private Sensor allocateSensor(int x, int y) {
-		Sensor sensor = new Sensor(x, y, Color.BLACK, this);
+		java.util.Random rand = new java.util.Random();
+		Color c = new Color(rand.nextFloat(), rand.nextFloat(), rand.nextFloat());
+		Sensor sensor = new Sensor(x, y, c, this);
 		river.putObjectAt(x, y, sensor);
 		sensors.add(sensor);
 		return sensor;
@@ -215,6 +223,8 @@ public class SIMLauncher extends Repast3Launcher {
 	//Runs after playing simulation
 	@Override
 	public void begin() {
+		
+		//setNUM_SENSORS(50);
 		buildModel();
 		//if (!BATCH_MODE) {
 		buildDisplay();	
@@ -291,7 +301,7 @@ public class SIMLauncher extends Repast3Launcher {
 
 			@Override
 			public double getSValue() {
-				List<Float> batteryLevels = new ArrayList<Float>();
+				List<Double> batteryLevels = new ArrayList<Double>();
 
 				for (Sensor sensor : sensors)
 					batteryLevels.add(sensor.getBattery());
@@ -370,6 +380,13 @@ public class SIMLauncher extends Repast3Launcher {
 	
 	public ArrayList<Sensor> getSENSORS() {
 		return sensors;
+	}
+	
+	public Color getSensorCoalitionColor(AID aid) {
+		for (Sensor sensor : sensors)
+			if (sensor.getAID().equals(aid))
+				return sensor.getColor();
+		return null;
 	}
 	//-----
 }
