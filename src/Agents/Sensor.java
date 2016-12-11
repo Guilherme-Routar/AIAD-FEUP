@@ -17,6 +17,7 @@ import ACLMsgContentObjects.CANCEL.Withdraw;
 import ACLMsgContentObjects.INFORM.Adherence;
 import ACLMsgContentObjects.INFORM.Leadership;
 import ACLMsgContentObjects.INFORM.Sample;
+import COSA_Calculations.COSA;
 import Environment.Water;
 import SIMLauncher.SIMLauncher;
 import jade.lang.acl.ACLMessage;
@@ -26,6 +27,7 @@ import sajas.core.behaviours.CyclicBehaviour;
 
 
 import jade.core.AID;
+import sajas.core.behaviours.TickerBehaviour;
 
 public class Sensor extends Agent implements Drawable{
 
@@ -34,11 +36,11 @@ public class Sensor extends Agent implements Drawable{
 	private SIMLauncher launcher;
 
 	private STATUS status;
-	private double battery;
-	private double stdDev, maxAdh, maxLead;
+	private double battery, stdDev, maxAdh, maxLead;
 	private boolean leader;
-	private AID nodeLeaderOfMe;
+	private AID leaderSensor;
 	private int sleepCounter;
+	private COSA_STRATEGY strategy;
 
 	private Vector<Double> pollutionSamples;
 	private HashMap<AID, Double> neighboursLastSampleMap, neighboursAdherenceMap;
@@ -51,7 +53,9 @@ public class Sensor extends Agent implements Drawable{
 	private final static double MAX_STD_DEV = 6;
 	private final static int FIRM_ADHERENCE = ACLMessage.ACCEPT_PROPOSAL;
 	private final static int ACK_ADHERENCE = ACLMessage.CONFIRM;
-	public static enum STATUS {ON, OFF, SLEEP};
+	private static enum STATUS {ON, OFF, SLEEP};
+	private static enum COSA_STRATEGY {COSA, COSA_SF, COSA_C, COSA_SF_C};
+	
 
 	public Sensor(int x, int y, Color color, SIMLauncher launcher) {
 		this.x = x;
@@ -65,7 +69,7 @@ public class Sensor extends Agent implements Drawable{
 		this.maxAdh = 0;
 		this.maxLead = 0;
 		this.leader = false;
-		this.nodeLeaderOfMe = null;
+		this.leaderSensor = null;
 
 		this.pollutionSamples = new Vector<Double>();
 		this.neighboursLastSampleMap = new HashMap<AID, Double>();
@@ -75,6 +79,31 @@ public class Sensor extends Agent implements Drawable{
 
 	@Override
 	public void setup() {
+		
+		int samplingFrequency;
+		
+		if (strategy == COSA_STRATEGY.COSA_SF) {
+			if (leader && dependantNeighbours.size() >= 4)
+				samplingFrequency = 1;
+			else
+				samplingFrequency = 2;
+		}
+		else samplingFrequency = 1;
+		
+		initBehaviours(samplingFrequency);
+	}
+	
+	public void initBehaviours(int samplingFrequency) {
+		
+		addBehaviour(new TickerBehaviour(this, samplingFrequency) {
+			
+			private static final long serialVersionUID = 1L;
+			@Override
+			protected void onTick() {
+				sampleEnvironment();
+			}
+		}); 
+		
 		addBehaviour(new CyclicBehaviour() {
 			private static final long serialVersionUID = 1L;
 			@Override
@@ -82,13 +111,14 @@ public class Sensor extends Agent implements Drawable{
 				updateSensor();
 			}
 		});
+		
 		msgHandler();
 	}
 
 	public void updateSensor() {
 		if (battery > 0) {	
 			if (status == STATUS.ON) {
-				sampleEnvironment();
+				//sampleEnvironment();
 				consumeBattery();
 			}
 			else if (status == STATUS.SLEEP) {
@@ -123,7 +153,7 @@ public class Sensor extends Agent implements Drawable{
 	}
 
 	//Builds the list of neighbours of the current node
-	public void getNeighbours() {
+	public void findNeighbours() {
 		for (Sensor sensor : launcher.getSENSORS()) {
 			if (!sensor.getLocalName().equals(getLocalName())) {
 				if (distBetweenSensors(sensor) <= 10)
@@ -140,16 +170,16 @@ public class Sensor extends Agent implements Drawable{
 
 	private void sleep() {
 		status = STATUS.SLEEP;
-		sleepCounter = Random.uniform.nextIntFromTo(200, 500);
+		sleepCounter = Random.uniform.nextIntFromTo(50, 500);
 	}
 
 	public void consumeBattery() {
 		battery--;
 	}
-
-	public double getLastPollutionSample() {
-		return pollutionSamples.get(pollutionSamples.size() - 1);
-	}
+	
+	//##############################################################
+	//                      MESSAGES HANDLER
+	//##############################################################
 
 	public void msgHandler() {
 
@@ -203,12 +233,12 @@ public class Sensor extends Agent implements Drawable{
 							 * If a leader breaks its relationship with me, I no
 							 * longer have a leader.
 							 */
-							nodeLeaderOfMe = null;
+							leaderSensor = null;
 
 						}
 						//dependant wants out
 						else if (content instanceof Withdraw) {
-							if (!leader || nodeLeaderOfMe != null)
+							if (!leader || leaderSensor != null)
 								System.err.println("WITHDRAW received and I am not a leader");
 
 							// remove node from my dependants list
@@ -247,7 +277,6 @@ public class Sensor extends Agent implements Drawable{
 				ACLMessage reply = msg.createReply();
 				reply.setContentObject(new Adherence(maxAdh));
 				send(reply);
-				System.out.println("Sent ADH");
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -262,7 +291,6 @@ public class Sensor extends Agent implements Drawable{
 			ACLMessage reply = msg.createReply();
 			reply.setContentObject(new Leadership(leadership));
 			send(reply);
-			System.out.println("Sent LEAD");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -281,7 +309,6 @@ public class Sensor extends Agent implements Drawable{
 				ACLMessage reply = msg.createReply();
 				reply.setContentObject(new Adherence(maxAdh));
 				send(reply);
-				System.out.println("Sent ADH");
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -292,7 +319,7 @@ public class Sensor extends Agent implements Drawable{
 		((Leadership) lead).getContent();
 
 		// if I have no leader
-		if (nodeLeaderOfMe == null) {
+		if (leaderSensor == null) {
 			if (maxLead < ((Leadership) lead).getContent()) {
 				maxLead = ((Leadership) lead).getContent();
 
@@ -300,25 +327,20 @@ public class Sensor extends Agent implements Drawable{
 				ACLMessage reply = msg.createReply();
 				reply.setPerformative(FIRM_ADHERENCE); 
 				send(reply);
-				System.out.println("Sent FIRM");
 			}
 		}
 	}
 
 	public void handle_FIRM_ADHERENCE(ACLMessage msg) {
 		// If I can become a leader (or keep being one)
-		if (nodeLeaderOfMe == null) {
+		if (leaderSensor == null) {
 			// ackAdherence(me, ar);
 			ACLMessage reply = msg.createReply();
 			reply.setPerformative(ACK_ADHERENCE);
 			send(reply);
 
-			// updateOwnLeadValue();
 			leader = true;
-
-			// updateDependentGroup();
 			dependantNeighbours.add(msg.getSender());
-			System.out.println("Sent ACK");
 		}
 	}
 
@@ -327,7 +349,7 @@ public class Sensor extends Agent implements Drawable{
 		 * If I am not a leader and I already have a leader
 		 * different than the one I want to adhere too.
 		 */
-		if (!leader && nodeLeaderOfMe != null && nodeLeaderOfMe != msg.getSender()) {
+		if (!leader && leaderSensor != null && leaderSensor != msg.getSender()) {
 			// withdraw(me, aL);
 			ACLMessage withdrawMsg = new ACLMessage(ACLMessage.CANCEL);
 			try {
@@ -336,9 +358,8 @@ public class Sensor extends Agent implements Drawable{
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			withdrawMsg.addReceiver(nodeLeaderOfMe);
+			withdrawMsg.addReceiver(leaderSensor);
 			send(withdrawMsg);
-			System.out.println("Sent Withdraw");
 		}
 
 		/*
@@ -355,7 +376,6 @@ public class Sensor extends Agent implements Drawable{
 			send(breakMsg);
 
 			dependantNeighbours.clear();
-			System.out.println("Sent Break");
 		}
 
 		/*
@@ -363,11 +383,16 @@ public class Sensor extends Agent implements Drawable{
 		 * can go to sleep.
 		 */
 		leader = false;
-		nodeLeaderOfMe = msg.getSender();
+		leaderSensor = msg.getSender();
 		sleep();
 	}
-
+	
+	//##############################################################
+	//             LEADERSHIP & ADHERENCE CALCULATIONS
+	//##############################################################
+	
 	private double calcLeadership(double negotiatingNeighbourMaxAdherence) {
+		//Prestige calculation
 		double prestigeSum = 0;
 
 		for (AID dependantAID : dependantNeighbours) prestigeSum += neighboursAdherenceMap.get(dependantAID);
@@ -376,76 +401,45 @@ public class Sensor extends Agent implements Drawable{
 
 		double prestige = prestigeSum / (dependantNeighbours.size() + 2);
 
+		//Capacity calculation
 		double capacity = (battery - SECURITY_BATTERY) / MAX_BATTERY;
 
+		//Representativeness calculation
 		Vector<Double> groupSamples = new Vector<Double>(neighboursLastSampleMap.values());
 		groupSamples.add(getLastPollutionSample());
 
-		double groupSamplesMean = calcMean(groupSamples);
+		double groupSamplesMean = COSA.calcMean(groupSamples);
 
 		double representativeness = 1 / (Math.pow(Math.E, Math.abs(getLastPollutionSample() - groupSamplesMean)
-				* calcCV(new Vector<Double>(neighboursAdherenceMap.values()))));
+				* COSA.calcCV(new Vector<Double>(neighboursAdherenceMap.values()))));
 
 		return prestige * capacity * representativeness;
-
 	}
 
 	private double calcAdherence(double pollutionSample) {
-		double Hj = calcEntropy(stdDev);
-		double Hmax = calcEntropy(MAX_STD_DEV);
-		double Hmin = calcEntropy(MIN_STD_DEV);
+		double Hj = COSA.calcEntropy(stdDev);
+		double Hmax = COSA.calcEntropy(MAX_STD_DEV);
+		double Hmin = COSA.calcEntropy(MIN_STD_DEV);
 		double variableModelCertainty = 1 - ((Math.pow(Math.E, Hj) - Math.pow(Math.E, Hmin)) 
 				/ 
 				(Math.pow(Math.E, Hmax) - Math.pow(Math.E, Hmin)));
 
-		double pollutionSamplesMean = calcMean(pollutionSamples);
+		double pollutionSamplesMean = COSA.calcMean(pollutionSamples);
 		double valuesSimilarity = 
-				calcNormalDistribution(pollutionSample, pollutionSamplesMean, stdDev)
+				COSA.calcNormalDistribution(pollutionSample, pollutionSamplesMean, stdDev)
 				/
-				calcNormalDistribution(pollutionSamplesMean, pollutionSamplesMean, stdDev);
+				COSA.calcNormalDistribution(pollutionSamplesMean, pollutionSamplesMean, stdDev);
 
 		return valuesSimilarity * variableModelCertainty;
 	}
-
-	public static final double calcNormalDistribution(double x, double u, double stdDev) {
-		double leftHand = 1 / (stdDev * Math.sqrt(2 * Math.PI));
-		double rightHand = Math.pow(Math.E, ((-1 * Math.pow(x - u, 2)) 
-											 / 
-											 (2 * Math.pow(stdDev, 2))));
-		return leftHand * rightHand;
-	}
-
-	public static final double calcMean(Vector<Double> Vec) {
-		double sum = 0;
-		for (double val : Vec) sum += val;
-		return sum / Vec.size();
-	}
-
-	public static final double calcEntropy(double stdDeviation) {
-		return Math.log(stdDeviation * Math.sqrt(2 * Math.PI * Math.E));
-	}
-
-	public static final double calcCV(Vector<Double> Vec) {
-		return calcStdDev(Vec) / calcMean(Vec);
-	}
-
-	public static final double calcStdDev(Vector<Double> Vec) {
-		return Math.sqrt(calcVariance(Vec));
-	}
-
-	public static final double calcVariance(Vector<Double> Vec) {
-		double mean = calcMean(Vec);
-		double sum = 0;
-		for (double val : Vec)
-			sum += (mean - val) * (mean - val);
-		return sum / Vec.size();
-	}
+	
+	//##############################################################
 
 	@Override
 	public void draw(SimGraphics sim) {
 		if (status == STATUS.ON || status == STATUS.SLEEP) {
-			if (nodeLeaderOfMe != null && nodeLeaderOfMe != getAID())
-				sim.drawFastRect(launcher.getSensorCoalitionColor(nodeLeaderOfMe));
+			if (leaderSensor != null && leaderSensor != getAID())
+				sim.drawFastRect(launcher.getSensorCoalitionColor(leaderSensor));
 			else
 				sim.drawFastRect(color);
 		}
@@ -468,5 +462,9 @@ public class Sensor extends Agent implements Drawable{
 
 	public double getBattery() {
 		return battery;
+	}
+	
+	public double getLastPollutionSample() {
+		return pollutionSamples.get(pollutionSamples.size() - 1);
 	}
 }

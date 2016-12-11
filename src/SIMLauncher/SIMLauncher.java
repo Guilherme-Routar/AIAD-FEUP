@@ -108,7 +108,7 @@ public class SIMLauncher extends Repast3Launcher {
 	}
 	
 	private void getSensorsNeighbours() {
-		for (Sensor sensor : sensors) sensor.getNeighbours();
+		for (Sensor sensor : sensors) sensor.findNeighbours();
 	}
 
 	private void launchSensors() {
