@@ -6,7 +6,6 @@ import uchicago.src.sim.util.Random;
 
 import java.awt.Color;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.TreeSet;
@@ -21,7 +20,6 @@ import COSA_Calculations.COSA;
 import Environment.Water;
 import SIMLauncher.SIMLauncher;
 import jade.lang.acl.ACLMessage;
-import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 import sajas.core.behaviours.CyclicBehaviour;
 
@@ -39,7 +37,6 @@ public class Sensor extends Agent implements Drawable{
 	private double battery, stdDev, maxAdh, maxLead;
 	private boolean leader;
 	private AID leaderSensor;
-	private boolean dependant;
 	private int sleepCounter;
 	private COSA_STRATEGY strategy;
 	private SinkNode sinkNode;
@@ -71,7 +68,6 @@ public class Sensor extends Agent implements Drawable{
 		this.maxLead = 0;
 		this.leader = false;
 		this.leaderSensor = null;
-	    this.dependant = false;
 		this.strategy = COSA_STRATEGY.COSA;
 		this.sinkNode = sinkNode;
 
@@ -79,6 +75,7 @@ public class Sensor extends Agent implements Drawable{
 		this.neighboursLastSampleMap = new HashMap<AID, Double>();
 		this.neighboursAdherenceMap = new HashMap<AID, Double>();
 		this.dependantNeighbours = new TreeSet<AID>();
+		//this.dependantNeighbours2 = new Vector<AID>();
 	}
 
 	@Override
@@ -165,7 +162,6 @@ public class Sensor extends Agent implements Drawable{
 	public double distBetweenSensors(Sensor S) {
 		double deltaX = S.getX() - this.x;
 		double deltaY = S.getY() - this.y; 
-		//System.out.println(Math.sqrt(deltaX * deltaX + deltaY * deltaY));
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 	}	
 
@@ -295,7 +291,7 @@ public class Sensor extends Agent implements Drawable{
 	}
 
 	public void handle_INFORM_Lead(ACLMessage msg, Leadership lead) {
-		// if I have no leadera
+		// if I have no leader
 		if (leaderSensor == null) {
 			if (maxLead < ((Leadership) lead).getContent()) {
 				maxLead = ((Leadership) lead).getContent();
@@ -432,9 +428,5 @@ public class Sensor extends Agent implements Drawable{
 	
 	public double getLastPollutionSample() {
 		return pollutionSamples.get(pollutionSamples.size() - 1);
-	}
-	
-	public void setDependant() {
-		this.dependant = true;
 	}
 }

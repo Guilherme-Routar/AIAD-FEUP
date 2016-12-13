@@ -20,7 +20,6 @@ import uchicago.src.sim.analysis.OpenSequenceGraph;
 import uchicago.src.sim.analysis.Sequence;
 import uchicago.src.sim.engine.Schedule;
 import uchicago.src.sim.engine.SimInit;
-import uchicago.src.sim.gui.CircleIcon;
 import uchicago.src.sim.gui.DisplaySurface;
 import uchicago.src.sim.gui.Object2DDisplay;
 import uchicago.src.sim.gui.TextDisplay;
@@ -52,11 +51,9 @@ public class SIMLauncher extends Repast3Launcher {
 	//Pollution propagation elements
 	private int POLLUTION_Y_VALUE = RIVER_HEIGHT / 3;
 	private float SEDIMENTATION, ALPHA, BETA, GAMMA;
-	
-	
+		
 	private OpenSequenceGraph batteryPlot;
 	private OpenSequenceGraph errorPlot;
-
 
 	//Initialization 
 	public SIMLauncher() { 
@@ -81,7 +78,7 @@ public class SIMLauncher extends Repast3Launcher {
 
 	@SuppressWarnings("unchecked")
 	public void initScenario() {
-		SCENARIO = Scenario.CHAINALONGRIVER;
+		SCENARIO = Scenario.ENDOFRIVER;
 		Vector<Scenario> vecScenarios = new Vector<Scenario>();
 		for (int i = 0; i < Scenario.values().length; i++) vecScenarios.add(Scenario.values()[i]);
 		descriptors.put("SCENARIO", new ListPropertyDescriptor("SCENARIO", vecScenarios));
@@ -238,10 +235,10 @@ public class SIMLauncher extends Repast3Launcher {
 	@Override
 	public void begin() {
 		buildModel();
-		//if (!BATCH_MODE) {
-		buildDisplay();	
-		buildSchedule();
-		//}
+		if (!BATCH_MODE) {
+			buildDisplay();	
+			buildSchedule();
+		}
 		super.begin();
 	}
 

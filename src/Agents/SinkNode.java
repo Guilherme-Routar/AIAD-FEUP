@@ -1,8 +1,6 @@
 package Agents;
 
 import java.awt.Color;
-import java.util.ArrayList;
-import java.util.HashMap;
 
 import ACLMsgContentObjects.INFORM.Sample;
 import Environment.Water;
