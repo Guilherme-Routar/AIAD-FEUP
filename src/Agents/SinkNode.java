@@ -41,11 +41,8 @@ public class SinkNode extends Agent{
 	}
 	
 	@Override
-	public void setup() {
-		
-		//collectActualPollutionLevels();	
+	public void setup() {	
 		msgHandler();
-		
 	}
 	
 	public void msgHandler() {
@@ -84,21 +81,25 @@ public class SinkNode extends Agent{
 				else {
 					error = Math.abs(actualPollutionLevel - lastSamplePollutionLevels);
 					errorSum += error;
-				}System.out.println("Error % " + errorPercentage());
+				}
 			}
 		});
 	}
 	
-	public float errorPercentage() {
-		if (errorSum > actualPollutionLevelsSum)
-			return (1 - (actualPollutionLevelsSum / errorSum)) * 100;
-		else
-			return (1 - (errorSum / actualPollutionLevelsSum)) * 100;
+	public double calcErrorPercentage() {
+		
+		if (errorSum == 0 && actualPollutionLevelsSum == 0)
+			return 0;
+		else {
+			if (errorSum > actualPollutionLevelsSum)
+				return (double) ((1 - (actualPollutionLevelsSum / errorSum)) * 100);
+			else
+				return (double) ((1 - (errorSum / actualPollutionLevelsSum)) * 100);
+		}		
 	}
 	
 	public void draw(SimGraphics sim) {
 		sim.drawFastOval(color);
-		
 	}
 	
 	public int getX() {

@@ -53,6 +53,7 @@ public class SIMLauncher extends Repast3Launcher {
 	
 	
 	private OpenSequenceGraph batteryPlot;
+	private OpenSequenceGraph errorPlot;
 
 
 	//Initialization 
@@ -265,6 +266,7 @@ public class SIMLauncher extends Repast3Launcher {
 		surface.display();
 		
 		initBatteryPlot();
+		initErrorPlot();
 	}
 
 	//Build the schedule
@@ -272,6 +274,37 @@ public class SIMLauncher extends Repast3Launcher {
 		getSchedule().scheduleActionBeginning(1, this, "updateRiver");
 		getSchedule().scheduleActionAtInterval(1, surface, "updateDisplay", Schedule.LAST);
 		getSchedule().scheduleActionAtInterval(1, batteryPlot, "step", Schedule.LAST);
+		getSchedule().scheduleActionAtInterval(1, errorPlot, "step", Schedule.LAST);
+	}
+	
+	
+	private void initErrorPlot() {
+		
+		if (errorPlot != null) errorPlot.dispose();
+
+		errorPlot = new OpenSequenceGraph("Error % for Sensor S1", this);
+		errorPlot.setAxisTitles("Time", "Error");
+
+		errorPlot.addSequence("Error % for Sensor S1", new Sequence() {
+
+			@Override
+			public double getSValue() {
+				ArrayList<Double> errorPercentage = new ArrayList<Double>();
+
+				errorPercentage.add(sinkNode.calcErrorPercentage());
+
+				Collections.sort(errorPercentage);
+
+				int listSize = errorPercentage.size();
+				int listMiddle = listSize / 2;
+
+				return listSize % 2 == 0 ? (errorPercentage.get(listMiddle) + errorPercentage.get(listMiddle - 1)) / 2
+						: errorPercentage.get(listMiddle);
+			}
+
+		});
+
+		errorPlot.display();
 	}
 
 	private void initBatteryPlot() {
@@ -318,7 +351,7 @@ public class SIMLauncher extends Repast3Launcher {
 	//Get and Set functions -----
 	@Override
 	public String[] getInitParam() {
-		return new String[] {"NUM_SENSORS", "RIVER_WIDTH", "RIVER_HEIGHT", "SCENARIO"};
+		return new String[] {"RIVER_WIDTH", "RIVER_HEIGHT", "SCENARIO"};
 	}	
 
 	@Override
