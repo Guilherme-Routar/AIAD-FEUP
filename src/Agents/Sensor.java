@@ -80,8 +80,8 @@ public class Sensor extends Agent implements Drawable{
 	@Override
 	public void setup() {
 		
+		if (!getLocalName().equals("SN")) {
 		int samplingFrequency;
-		
 		if (strategy == COSA_STRATEGY.COSA_SF) {
 			if (leader && dependantNeighbours.size() >= 4)
 				samplingFrequency = 1;
@@ -91,10 +91,10 @@ public class Sensor extends Agent implements Drawable{
 		else samplingFrequency = 1;
 		
 		initBehaviours(samplingFrequency);
+		}
 	}
 	
 	public void initBehaviours(int samplingFrequency) {
-		
 		addBehaviour(new TickerBehaviour(this, samplingFrequency) {
 			
 			private static final long serialVersionUID = 1L;
@@ -103,7 +103,6 @@ public class Sensor extends Agent implements Drawable{
 				sampleEnvironment();
 			}
 		}); 
-		
 		addBehaviour(new CyclicBehaviour() {
 			private static final long serialVersionUID = 1L;
 			@Override
@@ -111,8 +110,14 @@ public class Sensor extends Agent implements Drawable{
 				updateSensor();
 			}
 		});
-		
 		msgHandler();
+		
+		
+		
+		//Object obj = launcher.getRIVER().getObjectAt(10, 10);
+		//System.out.println((SinkNode) obj);
+		//if (obj instanceof Water) System.out.println("Found sink node");
+		//else System.out.println("Sink node should be here");
 	}
 
 	public void updateSensor() {
@@ -152,27 +157,32 @@ public class Sensor extends Agent implements Drawable{
 		}
 	}
 
-	//Builds the list of neighbours of the current node
+	//Builds the sensors' neighbours map
 	public void findNeighbours() {
-		for (Sensor sensor : launcher.getSENSORS()) {
-			if (!sensor.getLocalName().equals(getLocalName())) {
-				if (distBetweenSensors(sensor) <= 10)
-					neighboursAdherenceMap.put(sensor.getAID(), 0.0);
+		for (Object sensor : launcher.getSENSORS()) {
+			Sensor sensorObj = (Sensor) sensor;
+			if (!sensorObj.getLocalName().equals(getLocalName())) {
+				if (distBetweenSensors(sensorObj) <= 10)
+					neighboursAdherenceMap.put(sensorObj.getAID(), 0.0);
 			}
 		}
+		
 	}
 
+	//Calculates the distance between the current sensor and another one
 	public double distBetweenSensors(Sensor S) {
 		double deltaX = S.getX() - this.x;
 		double deltaY = S.getY() - this.y;
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 	}	
 
+	//Puts the sensor to sleep
 	private void sleep() {
 		status = STATUS.SLEEP;
-		sleepCounter = Random.uniform.nextIntFromTo(50, 500);
+		sleepCounter = Random.uniform.nextIntFromTo(100, 300);
 	}
 
+	//Decrements the battery level
 	public void consumeBattery() {
 		battery--;
 	}
@@ -224,32 +234,14 @@ public class Sensor extends Agent implements Drawable{
 							e.printStackTrace();
 						}
 
-						//leader wants out
 						if (content instanceof Break){
-							if (leader)
-								System.err.println("BREAK received and I am a leader!");
-
-							/*
-							 * If a leader breaks its relationship with me, I no
-							 * longer have a leader.
-							 */
+							if (leader) System.err.println("BREAK received");
 							leaderSensor = null;
-
 						}
-						//dependant wants out
 						else if (content instanceof Withdraw) {
-							if (!leader || leaderSensor != null)
-								System.err.println("WITHDRAW received and I am not a leader");
-
-							// remove node from my dependants list
+							//!leader || leaderSensor != null
 							dependantNeighbours.remove(msg.getSender());
-
-							/*
-							 * If I have no more dependant nodes, I am no longer
-							 * a leader.
-							 */
-							if (dependantNeighbours.isEmpty())
-								leader = false;
+							if (dependantNeighbours.isEmpty()) leader = false;
 						}
 					}
 				}
@@ -260,20 +252,17 @@ public class Sensor extends Agent implements Drawable{
 	}
 	
 	public void handle_INFORM_Sample(ACLMessage msg, Sample S) {
-		double receivedSample = ((Sample) S).getContent();
+		double samplePollutionValue = ((Sample) S).getContent();
 
-		neighboursLastSampleMap.put(msg.getSender(), receivedSample);
+		neighboursLastSampleMap.put(msg.getSender(), samplePollutionValue);
 
-		double adherence = calcAdherence(receivedSample);
-
-		// updateOwnMaxAdherence();
+		double adherence = calcAdherence(samplePollutionValue);
 		if (maxAdh < adherence) {
 			maxAdh = adherence;
-
 			neighboursAdherenceMap.put(msg.getSender(), maxAdh);
 
+			// inform(me, al, maxAdh, t); - Sending adherence value
 			try {
-				// inform(me, al, maxAdh, t);
 				ACLMessage reply = msg.createReply();
 				reply.setContentObject(new Adherence(maxAdh));
 				send(reply);
@@ -286,8 +275,8 @@ public class Sensor extends Agent implements Drawable{
 	public void handle_INFORM_Adh(ACLMessage msg, Adherence adh) {
 		double leadership = calcLeadership(((Adherence) adh).getContent());
 
+		// inform(me, ar, lead);
 		try {
-			// inform(me, ar, lead);
 			ACLMessage reply = msg.createReply();
 			reply.setContentObject(new Leadership(leadership));
 			send(reply);
@@ -295,17 +284,14 @@ public class Sensor extends Agent implements Drawable{
 			e.printStackTrace();
 		}
 
-		double adherence = calcAdherence(
-				neighboursLastSampleMap.get(msg.getSender()));
+		double adherence = calcAdherence(neighboursLastSampleMap.get(msg.getSender()));
 
-		// updateOwnMaxAdherence();
 		if (maxAdh < adherence) {
 			maxAdh = adherence;
-
 			neighboursAdherenceMap.put(msg.getSender(), maxAdh);
 
+			// inform(me, al, maxAdh, t);
 			try {
-				// inform(me, al, maxAdh, t);
 				ACLMessage reply = msg.createReply();
 				reply.setContentObject(new Adherence(maxAdh));
 				send(reply);
@@ -316,9 +302,7 @@ public class Sensor extends Agent implements Drawable{
 	}
 
 	public void handle_INFORM_Lead(ACLMessage msg, Leadership lead) {
-		((Leadership) lead).getContent();
-
-		// if I have no leader
+		// if I have no leadera
 		if (leaderSensor == null) {
 			if (maxLead < ((Leadership) lead).getContent()) {
 				maxLead = ((Leadership) lead).getContent();
@@ -332,7 +316,6 @@ public class Sensor extends Agent implements Drawable{
 	}
 
 	public void handle_FIRM_ADHERENCE(ACLMessage msg) {
-		// If I can become a leader (or keep being one)
 		if (leaderSensor == null) {
 			// ackAdherence(me, ar);
 			ACLMessage reply = msg.createReply();
@@ -345,27 +328,19 @@ public class Sensor extends Agent implements Drawable{
 	}
 
 	public void handle_ACK_ADHERENCE(ACLMessage msg) {
-		/*
-		 * If I am not a leader and I already have a leader
-		 * different than the one I want to adhere too.
-		 */
+
+		// withdraw(me, aL);
 		if (!leader && leaderSensor != null && leaderSensor != msg.getSender()) {
-			// withdraw(me, aL);
 			ACLMessage withdrawMsg = new ACLMessage(ACLMessage.CANCEL);
 			try {
 				withdrawMsg.setContentObject(new Withdraw());
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			withdrawMsg.addReceiver(leaderSensor);
 			send(withdrawMsg);
 		}
 
-		/*
-		 * If I am a leader and there are nodes dependant on
-		 * me.
-		 */
 		if (leader && !dependantNeighbours.isEmpty()) {
 			ACLMessage breakMsg = new ACLMessage(ACLMessage.CANCEL);
 
@@ -378,10 +353,6 @@ public class Sensor extends Agent implements Drawable{
 			dependantNeighbours.clear();
 		}
 
-		/*
-		 * I become dependant, I now have a leader, and I
-		 * can go to sleep.
-		 */
 		leader = false;
 		leaderSensor = msg.getSender();
 		sleep();

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Vector;
 
 import Agents.Sensor;
+import Agents.SinkNode;
 import Environment.Water;
 import jade.core.AID;
 import jade.core.Profile;
@@ -51,11 +52,7 @@ public class SIMLauncher extends Repast3Launcher {
 	
 	
 	private OpenSequenceGraph batteryPlot;
-	//private OpenSequenceGraph pollutionGraph;
-	
-	
-	
-	//-----
+
 
 	//Initialization 
 	public SIMLauncher() { 
@@ -101,10 +98,12 @@ public class SIMLauncher extends Repast3Launcher {
 		Runtime rt = Runtime.instance();
 		Profile p1 = new ProfileImpl();
 		mainContainer = rt.createMainContainer(p1);
-
+		
+		launchSinkNode();
 		launchSensors();
 		getSensorsNeighbours();
 		launchWater();
+		
 	}
 	
 	private void getSensorsNeighbours() {
@@ -147,6 +146,16 @@ public class SIMLauncher extends Repast3Launcher {
 			}
 		}
 		catch (StaleProxyException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void launchSinkNode() {
+		SinkNode sinkNode = new SinkNode();
+		river.putObjectAt(sinkNode.getX(), sinkNode.getY(), sinkNode);
+		try {
+			mainContainer.acceptNewAgent("SN", sinkNode).start();
+		} catch (StaleProxyException e) {
 			e.printStackTrace();
 		}
 	}
@@ -223,8 +232,6 @@ public class SIMLauncher extends Repast3Launcher {
 	//Runs after playing simulation
 	@Override
 	public void begin() {
-		
-		//setNUM_SENSORS(50);
 		buildModel();
 		//if (!BATCH_MODE) {
 		buildDisplay();	
@@ -264,31 +271,6 @@ public class SIMLauncher extends Repast3Launcher {
 		getSchedule().scheduleActionAtInterval(1, surface, "updateDisplay", Schedule.LAST);
 		getSchedule().scheduleActionAtInterval(1, batteryPlot, "step", Schedule.LAST);
 	}
-	/*
-	
-	private void initPollutionPlot() {
-		if (pollutionGraph != null)
-			pollutionGraph.dispose();
-
-		pollutionGraph = new OpenSequenceGraph("Pollution Detected", this);
-		pollutionGraph.setAxisTitles("time", "pollution");
-
-		for (int i = 0; i < NUM_SENSORS; i++) {
-			final int iPrime = i;
-
-			pollutionGraph.addSequence("S-" + i, new Sequence() {
-
-				@Override
-				public double getSValue() {
-					return sensors.get(iPrime).getLastSamplePollutionLevel();
-				}
-
-			});
-		}
-
-		pollutionGraph.display();
-	}
-	*/
 
 	private void initBatteryPlot() {
 		
