@@ -19,25 +19,18 @@ public class SinkNode extends Agent{
 	private int x, y;
 	private Color color;
 	private SIMLauncher launcher;
-	
 	private float errorSum;
-	
-	private HashMap<AID, Double> actualPollutionLevels;
-	private float actualPollutionLevelsSum = 0;
-	
+	private float actualPollutionLevelsSum;
 	private double lastSamplePollutionLevels;
 
 	public SinkNode(SIMLauncher launcher) {
-		this.x = 10;
-		this.y = 3;
+		this.x = launcher.getRIVER_WIDTH() - 1;
+		this.y = launcher.getRIVER_HEIGHT() / 2;
 		this.color = Color.black;
 		this.launcher = launcher;
 		this.errorSum = 0;
-		
-		this.actualPollutionLevels = new HashMap<AID, Double>();
-		
+		this.actualPollutionLevelsSum = 0;
 		this.lastSamplePollutionLevels = 0;
-	
 	}
 	
 	@Override
@@ -53,20 +46,20 @@ public class SinkNode extends Agent{
 			@Override
 			public void action() {
 				
-				double error;
+				//Getting pollution level for every instant 
 				double actualPollutionLevel = 0;
 				for (Sensor sensor : launcher.getSENSORS()) {
 					if (sensor.getLocalName().equals("S1")) {
 						actualPollutionLevel = ((Water) launcher.getRIVER().getObjectAt(sensor.getX(), sensor.getY())).getPollution();
-						actualPollutionLevels.put(sensor.getAID(), actualPollutionLevel);
-						
 						actualPollutionLevelsSum += actualPollutionLevel;
 					}
 				}
 				
+				//Getting last pollution level sent by agent S1
+				double error;
 				ACLMessage msg = myAgent.receive();
-				
 				Object content = null;
+				
 				if (msg != null) {
 					try {
 						content = msg.getContentObject();
@@ -87,7 +80,6 @@ public class SinkNode extends Agent{
 	}
 	
 	public double calcErrorPercentage() {
-		
 		if (errorSum == 0 && actualPollutionLevelsSum == 0)
 			return 0;
 		else {

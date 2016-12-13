@@ -141,6 +141,7 @@ public class Sensor extends Agent implements Drawable{
 			for (AID aid : neighboursAdherenceMap.keySet())
 				msg.addReceiver(aid);
 
+			//Sending sample to sink node
 			msg.addReceiver(sinkNode.getAID());
 			
 			send(msg);
@@ -158,13 +159,13 @@ public class Sensor extends Agent implements Drawable{
 					neighboursAdherenceMap.put(sensorObj.getAID(), 0.0);
 			}
 		}
-		
 	}
 
 	//Calculates the distance between the current sensor and another one
 	public double distBetweenSensors(Sensor S) {
 		double deltaX = S.getX() - this.x;
-		double deltaY = S.getY() - this.y;
+		double deltaY = S.getY() - this.y; 
+		//System.out.println(Math.sqrt(deltaX * deltaX + deltaY * deltaY));
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 	}	
 

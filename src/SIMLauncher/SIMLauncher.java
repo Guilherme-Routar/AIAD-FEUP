@@ -20,14 +20,16 @@ import uchicago.src.sim.analysis.OpenSequenceGraph;
 import uchicago.src.sim.analysis.Sequence;
 import uchicago.src.sim.engine.Schedule;
 import uchicago.src.sim.engine.SimInit;
+import uchicago.src.sim.gui.CircleIcon;
 import uchicago.src.sim.gui.DisplaySurface;
 import uchicago.src.sim.gui.Object2DDisplay;
+import uchicago.src.sim.gui.TextDisplay;
 import uchicago.src.sim.space.Object2DGrid;
 import uchicago.src.sim.util.Random;
 
 public class SIMLauncher extends Repast3Launcher {
 
-	private static boolean BATCH_MODE = true;
+	private static boolean BATCH_MODE = false;
 	//Parameters
 	private ContainerController mainContainer;
 	private ArrayList<Water> waterCells; 
@@ -118,7 +120,7 @@ public class SIMLauncher extends Repast3Launcher {
 			Sensor sensor;
 			int y, x;
 			if (SCENARIO == Scenario.CHAINALONGRIVER) {
-				setNUM_SENSORS(50);
+				setNUM_SENSORS(49);
 				for (int i = 0; i < NUM_SENSORS; i++) {
 					x = i * (RIVER_WIDTH / getNUM_SENSORS());
 					y = RIVER_HEIGHT / 2;
@@ -138,7 +140,7 @@ public class SIMLauncher extends Repast3Launcher {
 				}
 			}
 			else if (SCENARIO == Scenario.RANDOM) {
-				setNUM_SENSORS(50);
+				setNUM_SENSORS(49);
 				for (int i = 0; i < NUM_SENSORS; i++) {
 					x = Random.uniform.nextIntFromTo(0, RIVER_WIDTH - 1);
 					y = Random.uniform.nextIntFromTo(0, RIVER_HEIGHT - 1);
@@ -157,7 +159,7 @@ public class SIMLauncher extends Repast3Launcher {
 		this.sinkNode = sinkNode;
 		river.putObjectAt(sinkNode.getX(), sinkNode.getY(), sinkNode);
 		try {
-			mainContainer.acceptNewAgent("SN", sinkNode).start();
+			mainContainer.acceptNewAgent("S", sinkNode).start();
 		} catch (StaleProxyException e) {
 			e.printStackTrace();
 		}
@@ -252,17 +254,22 @@ public class SIMLauncher extends Repast3Launcher {
 
 	//Create displays, charts
 	private void buildDisplay() {
-
+		//Water cells display
 		Object2DDisplay waterDisplay = new Object2DDisplay(river);
 		waterDisplay.setObjectList(waterCells);
 		surface.addDisplayableProbeable(waterDisplay, "River");
 		addSimEventListener(surface);
 
+		//Sensors displlay
 		Object2DDisplay sensorsDisplay = new Object2DDisplay(river);
 		sensorsDisplay.setObjectList(sensors); 
 		surface.addDisplayableProbeable(sensorsDisplay, "Sensors");
 		addSimEventListener(surface);
-
+		
+		//Sink Node representation
+		TextDisplay td = new TextDisplay(970, 30, Color.yellow); td.addLine("SN");
+		surface.addDisplayableProbeable(td, "SN"); 
+		
 		surface.display();
 		
 		initBatteryPlot();
