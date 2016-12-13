@@ -39,8 +39,10 @@ public class Sensor extends Agent implements Drawable{
 	private double battery, stdDev, maxAdh, maxLead;
 	private boolean leader;
 	private AID leaderSensor;
+	private boolean dependant;
 	private int sleepCounter;
 	private COSA_STRATEGY strategy;
+	private SinkNode sinkNode;
 
 	private Vector<Double> pollutionSamples;
 	private HashMap<AID, Double> neighboursLastSampleMap, neighboursAdherenceMap;
@@ -54,10 +56,9 @@ public class Sensor extends Agent implements Drawable{
 	private final static int FIRM_ADHERENCE = ACLMessage.ACCEPT_PROPOSAL;
 	private final static int ACK_ADHERENCE = ACLMessage.CONFIRM;
 	private static enum STATUS {ON, OFF, SLEEP};
-	private static enum COSA_STRATEGY {COSA, COSA_SF, COSA_C, COSA_SF_C};
-	
+	private static enum COSA_STRATEGY {COSA, COSA_SF};
 
-	public Sensor(int x, int y, Color color, SIMLauncher launcher) {
+	public Sensor(int x, int y, Color color, SinkNode sinkNode, SIMLauncher launcher) {
 		this.x = x;
 		this.y = y;
 		this.color = color;
@@ -70,6 +71,9 @@ public class Sensor extends Agent implements Drawable{
 		this.maxLead = 0;
 		this.leader = false;
 		this.leaderSensor = null;
+	    this.dependant = false;
+		this.strategy = COSA_STRATEGY.COSA;
+		this.sinkNode = sinkNode;
 
 		this.pollutionSamples = new Vector<Double>();
 		this.neighboursLastSampleMap = new HashMap<AID, Double>();
@@ -78,20 +82,13 @@ public class Sensor extends Agent implements Drawable{
 	}
 
 	@Override
-	public void setup() {
-		
-		if (!getLocalName().equals("SN")) {
-		int samplingFrequency;
-		if (strategy == COSA_STRATEGY.COSA_SF) {
+	public void setup() {	
+		int samplingFrequency = 10;
+		if (strategy == COSA_STRATEGY.COSA_SF)
 			if (leader && dependantNeighbours.size() >= 4)
 				samplingFrequency = 1;
-			else
-				samplingFrequency = 2;
-		}
-		else samplingFrequency = 1;
 		
 		initBehaviours(samplingFrequency);
-		}
 	}
 	
 	public void initBehaviours(int samplingFrequency) {
@@ -100,7 +97,9 @@ public class Sensor extends Agent implements Drawable{
 			private static final long serialVersionUID = 1L;
 			@Override
 			protected void onTick() {
-				sampleEnvironment();
+				if (status == STATUS.ON) {
+					sampleEnvironment();
+				}
 			}
 		}); 
 		addBehaviour(new CyclicBehaviour() {
@@ -111,21 +110,12 @@ public class Sensor extends Agent implements Drawable{
 			}
 		});
 		msgHandler();
-		
-		
-		
-		//Object obj = launcher.getRIVER().getObjectAt(10, 10);
-		//System.out.println((SinkNode) obj);
-		//if (obj instanceof Water) System.out.println("Found sink node");
-		//else System.out.println("Sink node should be here");
 	}
 
 	public void updateSensor() {
 		if (battery > 0) {	
-			if (status == STATUS.ON) {
-				//sampleEnvironment();
+			if (status == STATUS.ON)
 				consumeBattery();
-			}
 			else if (status == STATUS.SLEEP) {
 				sleepCounter--;
 				if (sleepCounter <= 0) {
@@ -151,6 +141,8 @@ public class Sensor extends Agent implements Drawable{
 			for (AID aid : neighboursAdherenceMap.keySet())
 				msg.addReceiver(aid);
 
+			msg.addReceiver(sinkNode.getAID());
+			
 			send(msg);
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -411,6 +403,8 @@ public class Sensor extends Agent implements Drawable{
 		if (status == STATUS.ON || status == STATUS.SLEEP) {
 			if (leaderSensor != null && leaderSensor != getAID())
 				sim.drawFastRect(launcher.getSensorCoalitionColor(leaderSensor));
+			else if (leader)
+				sim.drawHollowFastOval(color);
 			else
 				sim.drawFastRect(color);
 		}
@@ -437,5 +431,9 @@ public class Sensor extends Agent implements Drawable{
 	
 	public double getLastPollutionSample() {
 		return pollutionSamples.get(pollutionSamples.size() - 1);
+	}
+	
+	public void setDependant() {
+		this.dependant = true;
 	}
 }

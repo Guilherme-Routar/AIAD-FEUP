@@ -27,11 +27,12 @@ import uchicago.src.sim.util.Random;
 
 public class SIMLauncher extends Repast3Launcher {
 
-	private static boolean BATCH_MODE = false;
+	private static boolean BATCH_MODE = true;
 	//Parameters
 	private ContainerController mainContainer;
 	private ArrayList<Water> waterCells; 
 	private ArrayList<Sensor> sensors;
+	private SinkNode sinkNode;
 	//Simulation elements
 	private Object2DGrid river;
 	private DisplaySurface surface;
@@ -151,7 +152,8 @@ public class SIMLauncher extends Repast3Launcher {
 	}
 	
 	private void launchSinkNode() {
-		SinkNode sinkNode = new SinkNode();
+		SinkNode sinkNode = new SinkNode(this);
+		this.sinkNode = sinkNode;
 		river.putObjectAt(sinkNode.getX(), sinkNode.getY(), sinkNode);
 		try {
 			mainContainer.acceptNewAgent("SN", sinkNode).start();
@@ -163,7 +165,7 @@ public class SIMLauncher extends Repast3Launcher {
 	private Sensor allocateSensor(int x, int y) {
 		java.util.Random rand = new java.util.Random();
 		Color c = new Color(rand.nextFloat(), rand.nextFloat(), rand.nextFloat());
-		Sensor sensor = new Sensor(x, y, c, this);
+		Sensor sensor = new Sensor(x, y, c, sinkNode, this);
 		river.putObjectAt(x, y, sensor);
 		sensors.add(sensor);
 		return sensor;
