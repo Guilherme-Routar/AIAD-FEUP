@@ -78,7 +78,7 @@ public class SIMLauncher extends Repast3Launcher {
 
 	@SuppressWarnings("unchecked")
 	public void initScenario() {
-		SCENARIO = Scenario.ENDOFRIVER;
+		SCENARIO = Scenario.RANDOM;
 		Vector<Scenario> vecScenarios = new Vector<Scenario>();
 		for (int i = 0; i < Scenario.values().length; i++) vecScenarios.add(Scenario.values()[i]);
 		descriptors.put("SCENARIO", new ListPropertyDescriptor("SCENARIO", vecScenarios));
@@ -112,12 +112,11 @@ public class SIMLauncher extends Repast3Launcher {
 	}
 
 	private void launchSensors() {
-
 		try {
 			Sensor sensor;
 			int y, x;
 			if (SCENARIO == Scenario.CHAINALONGRIVER) {
-				setNUM_SENSORS(49);
+				setNUM_SENSORS(50);
 				for (int i = 0; i < NUM_SENSORS; i++) {
 					x = i * (RIVER_WIDTH / getNUM_SENSORS());
 					y = RIVER_HEIGHT / 2;
@@ -137,7 +136,7 @@ public class SIMLauncher extends Repast3Launcher {
 				}
 			}
 			else if (SCENARIO == Scenario.RANDOM) {
-				setNUM_SENSORS(49);
+				setNUM_SENSORS(50);
 				for (int i = 0; i < NUM_SENSORS; i++) {
 					x = Random.uniform.nextIntFromTo(0, RIVER_WIDTH - 1);
 					y = Random.uniform.nextIntFromTo(0, RIVER_HEIGHT - 1);
@@ -286,10 +285,10 @@ public class SIMLauncher extends Repast3Launcher {
 		
 		if (errorPlot != null) errorPlot.dispose();
 
-		errorPlot = new OpenSequenceGraph("Error % for Sensor S1", this);
+		errorPlot = new OpenSequenceGraph("Error %", this);
 		errorPlot.setAxisTitles("Time", "Error");
 
-		errorPlot.addSequence("Error % for Sensor S1", new Sequence() {
+		errorPlot.addSequence("Error %", new Sequence() {
 
 			@Override
 			public double getSValue() {
@@ -355,7 +354,7 @@ public class SIMLauncher extends Repast3Launcher {
 	//Get and Set functions -----
 	@Override
 	public String[] getInitParam() {
-		return new String[] {"RIVER_WIDTH", "RIVER_HEIGHT", "SCENARIO"};
+		return new String[] {"RIVER_WIDTH", "RIVER_HEIGHT", "SCENARIO", "SEDIMENTATION", "ALPHA", "BETA", "GAMMA"};
 	}	
 
 	@Override
@@ -401,6 +400,38 @@ public class SIMLauncher extends Repast3Launcher {
 	
 	public ArrayList<Sensor> getSENSORS() {
 		return sensors;
+	}
+	
+	public float getSEDIMENTATION() {
+		return SEDIMENTATION;
+	}
+	
+	public void setSEDIMENTATION(float val) {
+		this.SEDIMENTATION = val;
+	}
+	
+	public float getALPHA() {
+		return ALPHA;
+	}
+	
+	public void setALPHA(float val) {
+		this.ALPHA = val;
+	}
+	
+	public float getBETA() {
+		return BETA;
+	}
+	
+	public void setBETA(float val) {
+		this.BETA = val;
+	}
+	
+	public float getGAMMA() {
+		return GAMMA;
+	}
+	
+	public void setGAMMA(float val) {
+		this.GAMMA = val;
 	}
 	
 	public Color getSensorCoalitionColor(AID aid) {

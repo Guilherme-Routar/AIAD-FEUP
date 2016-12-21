@@ -1,6 +1,5 @@
 package Agents;
 
-import java.awt.Color;
 
 import ACLMsgContentObjects.INFORM.Sample;
 import Environment.Water;
@@ -10,23 +9,22 @@ import jade.lang.acl.ACLMessage;
 import jade.lang.acl.UnreadableException;
 import sajas.core.Agent;
 import sajas.core.behaviours.CyclicBehaviour;
-import uchicago.src.sim.gui.SimGraphics;
 
 public class SinkNode extends Agent{
 
 	private int x, y;
-	private Color color;
 	private SIMLauncher launcher;
-	private float errorSum;
+	private float samplesPollutionLevelsSum;
 	private float actualPollutionLevelsSum;
 	private double lastSamplePollutionLevels;
+	
 
 	public SinkNode(SIMLauncher launcher) {
 		this.x = launcher.getRIVER_WIDTH() - 1;
 		this.y = launcher.getRIVER_HEIGHT() / 2;
-		this.color = Color.black;
 		this.launcher = launcher;
-		this.errorSum = 0;
+		
+		this.samplesPollutionLevelsSum = 0;
 		this.actualPollutionLevelsSum = 0;
 		this.lastSamplePollutionLevels = 0;
 	}
@@ -37,28 +35,25 @@ public class SinkNode extends Agent{
 	}
 	
 	public void msgHandler() {
-		
-		addBehaviour(new CyclicBehaviour() {
+		addBehaviour(new CyclicBehaviour(this) {
 			private static final long serialVersionUID = 1L;
-			
 			@Override
 			public void action() {
 				
 				//Getting pollution level for every instant 
 				double actualPollutionLevel = 0;
 				for (Sensor sensor : launcher.getSENSORS()) {
-					if (sensor.getLocalName().equals("S1")) {
+					if (sensor.isAlive()) {
 						actualPollutionLevel = ((Water) launcher.getRIVER().getObjectAt(sensor.getX(), sensor.getY())).getPollution();
 						actualPollutionLevelsSum += actualPollutionLevel;
 					}
 				}
 				
-				//Getting last pollution level sent by agent S1
-				double error;
+				//Getting last pollution levels received
 				ACLMessage msg = myAgent.receive();
-				Object content = null;
-				
+				Object content = null;				
 				if (msg != null) {
+
 					try {
 						content = msg.getContentObject();
 					} catch (UnreadableException e) {
@@ -66,30 +61,16 @@ public class SinkNode extends Agent{
 					}
 					
 					lastSamplePollutionLevels = ((Sample) content).getContent();
-					error = Math.abs(actualPollutionLevel - lastSamplePollutionLevels);
-					errorSum += error;
+					samplesPollutionLevelsSum += lastSamplePollutionLevels;
 				}
-				else {
-					error = Math.abs(actualPollutionLevel - lastSamplePollutionLevels);
-					errorSum += error;
-				}
+				else
+					samplesPollutionLevelsSum += lastSamplePollutionLevels;
 			}
 		});
 	}
 	
 	public double calcErrorPercentage() {
-		if (errorSum == 0 && actualPollutionLevelsSum == 0)
-			return 0;
-		else {
-			if (errorSum > actualPollutionLevelsSum)
-				return (double) ((1 - (actualPollutionLevelsSum / errorSum)) * 100);
-			else
-				return (double) ((1 - (errorSum / actualPollutionLevelsSum)) * 100);
-		}		
-	}
-	
-	public void draw(SimGraphics sim) {
-		sim.drawFastOval(color);
+		return Math.abs(1 - (actualPollutionLevelsSum / (actualPollutionLevelsSum - samplesPollutionLevelsSum))) * 1000;
 	}
 	
 	public int getX() {
@@ -98,10 +79,6 @@ public class SinkNode extends Agent{
 	
 	public int getY() {
 		return y;
-	}
-	
-	public Color getColor() {
-		return color;
 	}
 	
 	public AID getSinkNodeAID() {

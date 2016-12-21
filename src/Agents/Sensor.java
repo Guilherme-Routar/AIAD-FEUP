@@ -42,7 +42,7 @@ public class Sensor extends Agent implements Drawable{
 	private SinkNode sinkNode;
 
 	private Vector<Double> pollutionSamples;
-	private HashMap<AID, Double> neighboursLastSampleMap, neighboursAdherenceMap;
+	private HashMap<AID, Double> neighboursLastSample, neighboursAdherence;
 	private Set<AID> dependantNeighbours;
 
 	//###### FLAGS #######
@@ -72,10 +72,9 @@ public class Sensor extends Agent implements Drawable{
 		this.sinkNode = sinkNode;
 
 		this.pollutionSamples = new Vector<Double>();
-		this.neighboursLastSampleMap = new HashMap<AID, Double>();
-		this.neighboursAdherenceMap = new HashMap<AID, Double>();
+		this.neighboursLastSample = new HashMap<AID, Double>();
+		this.neighboursAdherence = new HashMap<AID, Double>();
 		this.dependantNeighbours = new TreeSet<AID>();
-		//this.dependantNeighbours2 = new Vector<AID>();
 	}
 
 	@Override
@@ -90,7 +89,6 @@ public class Sensor extends Agent implements Drawable{
 	
 	public void initBehaviours(int samplingFrequency) {
 		addBehaviour(new TickerBehaviour(this, samplingFrequency) {
-			
 			private static final long serialVersionUID = 1L;
 			@Override
 			protected void onTick() {
@@ -135,7 +133,7 @@ public class Sensor extends Agent implements Drawable{
 			ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
 			msg.setContentObject(new Sample(getLastPollutionSample()));
 
-			for (AID aid : neighboursAdherenceMap.keySet())
+			for (AID aid : neighboursAdherence.keySet())
 				msg.addReceiver(aid);
 
 			//Sending sample to sink node
@@ -153,7 +151,7 @@ public class Sensor extends Agent implements Drawable{
 			Sensor sensorObj = (Sensor) sensor;
 			if (!sensorObj.getLocalName().equals(getLocalName())) {
 				if (distBetweenSensors(sensorObj) <= 10)
-					neighboursAdherenceMap.put(sensorObj.getAID(), 0.0);
+					neighboursAdherence.put(sensorObj.getAID(), 0.0);
 			}
 		}
 	}
@@ -243,12 +241,12 @@ public class Sensor extends Agent implements Drawable{
 	public void handle_INFORM_Sample(ACLMessage msg, Sample S) {
 		double samplePollutionValue = ((Sample) S).getContent();
 
-		neighboursLastSampleMap.put(msg.getSender(), samplePollutionValue);
+		neighboursLastSample.put(msg.getSender(), samplePollutionValue);
 
 		double adherence = calcAdherence(samplePollutionValue);
 		if (maxAdh < adherence) {
 			maxAdh = adherence;
-			neighboursAdherenceMap.put(msg.getSender(), maxAdh);
+			neighboursAdherence.put(msg.getSender(), maxAdh);
 
 			// inform(me, al, maxAdh, t); - Sending adherence value
 			try {
@@ -273,11 +271,11 @@ public class Sensor extends Agent implements Drawable{
 			e.printStackTrace();
 		}
 
-		double adherence = calcAdherence(neighboursLastSampleMap.get(msg.getSender()));
+		double adherence = calcAdherence(neighboursLastSample.get(msg.getSender()));
 
 		if (maxAdh < adherence) {
 			maxAdh = adherence;
-			neighboursAdherenceMap.put(msg.getSender(), maxAdh);
+			neighboursAdherence.put(msg.getSender(), maxAdh);
 
 			// inform(me, al, maxAdh, t);
 			try {
@@ -355,7 +353,7 @@ public class Sensor extends Agent implements Drawable{
 		//Prestige calculation
 		double prestigeSum = 0;
 
-		for (AID dependantAID : dependantNeighbours) prestigeSum += neighboursAdherenceMap.get(dependantAID);
+		for (AID dependantAID : dependantNeighbours) prestigeSum += neighboursAdherence.get(dependantAID);
 		prestigeSum += calcAdherence(getLastPollutionSample());
 		prestigeSum += negotiatingNeighbourMaxAdherence;
 
@@ -365,13 +363,13 @@ public class Sensor extends Agent implements Drawable{
 		double capacity = (battery - SECURITY_BATTERY) / MAX_BATTERY;
 
 		//Representativeness calculation
-		Vector<Double> groupSamples = new Vector<Double>(neighboursLastSampleMap.values());
+		Vector<Double> groupSamples = new Vector<Double>(neighboursLastSample.values());
 		groupSamples.add(getLastPollutionSample());
 
 		double groupSamplesMean = COSA.calcMean(groupSamples);
 
 		double representativeness = 1 / (Math.pow(Math.E, Math.abs(getLastPollutionSample() - groupSamplesMean)
-				* COSA.calcCV(new Vector<Double>(neighboursAdherenceMap.values()))));
+				* COSA.calcCV(new Vector<Double>(neighboursAdherence.values()))));
 
 		return prestige * capacity * representativeness;
 	}
@@ -428,5 +426,11 @@ public class Sensor extends Agent implements Drawable{
 	
 	public double getLastPollutionSample() {
 		return pollutionSamples.get(pollutionSamples.size() - 1);
+	}
+	
+	public boolean isAlive() {
+		if (this.status == STATUS.ON)
+			return true;
+		return false;
 	}
 }
